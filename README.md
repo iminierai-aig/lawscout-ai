@@ -2,20 +2,9 @@
 
 AI-Powered Legal Research
 
-## Quick Start
-
-```bash
-python -m venv venv
-source venv/bin/activate
-pip install -r requirements.txt
-cp .env.template .env
-streamlit run web_app/app.py
-```
-
-## Cost
-
-- MVP: $15-35
-- Monthly: $50-80
+# LawScout AI  
+240,633 legal documents • Local Qdrant • Gemini-powered RAG  
+Built solo in 2025 — no funding, no team.
 
 ## License
 
