@@ -1,0 +1,52 @@
+# Cloud Build configuration for LawScout AI
+# Extended timeout for large ML dependencies (sentence-transformers, torch)
+
+steps:
+  # Build the container image
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['build', '-t', 'gcr.io/$PROJECT_ID/lawscout-ai', '.']
+    timeout: '1800s'  # 30 minutes for build step
+
+  # Push to Container Registry
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['push', 'gcr.io/$PROJECT_ID/lawscout-ai']
+
+  # Deploy to Cloud Run
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    entrypoint: gcloud
+    args:
+      - 'run'
+      - 'deploy'
+      - 'lawscout-ai'
+      - '--image'
+      - 'gcr.io/$PROJECT_ID/lawscout-ai'
+      - '--region'
+      - 'us-central1'
+      - '--platform'
+      - 'managed'
+      - '--allow-unauthenticated'
+      - '--memory'
+      - '2Gi'
+      - '--cpu'
+      - '2'
+      - '--min-instances'
+      - '0'
+      - '--max-instances'
+      - '10'
+      - '--timeout'
+      - '300'
+      - '--set-env-vars'
+      - 'QDRANT_URL=${_QDRANT_URL},QDRANT_API_KEY=${_QDRANT_API_KEY},GEMINI_API_KEY=${_GEMINI_API_KEY}'
+
+# Overall build timeout: 45 minutes
+timeout: '2700s'
+
+# Use substitution variables for secrets
+substitutions:
+  _QDRANT_URL: ''
+  _QDRANT_API_KEY: ''
+  _GEMINI_API_KEY: ''
+
+options:
+  logging: CLOUD_LOGGING_ONLY
+

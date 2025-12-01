@@ -4,3 +4,8 @@ primaryColor = "#3B82F6"
 [server]
 headless = true
 port = 8080
+enableCORS = false
+enableXsrfProtection = false
+
+[browser]
+gatherUsageStats = false

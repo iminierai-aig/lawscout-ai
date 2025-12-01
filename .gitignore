@@ -12,17 +12,17 @@ build/
 dist/
 *.egg-info/
 
-# Data
+# Data (large files - not for GitHub)
 data/
-*.json
 *.csv
 *.parquet
 
 # Vector Database (local Qdrant storage)
 qdrant_storage/
 
-# Credentials
+# Credentials (NEVER commit these)
 .env
+.env.*
 *.key
 *.pem
 credentials.json
@@ -43,19 +43,19 @@ logs/
 
 # Reports
 reports/
-*.txt
 
 # Backup files
 *.bak
 *.OLD
 *.backup
-*_backup/
-*_old/
-corrupted_backup/
+*_backup*
+*_old*
+app_backup_original.py
 
-# Temporary/utility scripts (add specific ones as needed)
-# verify_embeddings.py
+# Temporary files
+*.tmp
+*.temp
 
-# Backup directories
-lawscout-ai.backup/
+# Local testing
+verify_embeddings.py
 

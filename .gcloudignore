@@ -1,0 +1,74 @@
+# .gcloudignore - files to exclude from gcloud uploads
+# IMPORTANT: requirements.txt MUST be included (not listed here)
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+.venv/
+ENV/
+build/
+dist/
+*.egg-info/
+
+# Data (exclude large data files)
+data/
+*.json
+*.csv
+*.parquet
+
+# Local Qdrant storage
+qdrant_storage/
+
+# Credentials
+.env
+*.key
+*.pem
+credentials.json
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
+# Reports
+reports/
+
+# Backup files
+*.bak
+*.OLD
+*.backup
+*_backup/
+*_old/
+corrupted_backup/
+
+# Backup directories
+lawscout-ai.backup/
+
+# Git
+.git/
+.gitignore
+
+# Tests
+tests/
+*.test.py
+
+# Temporary files
+*.tmp
+*.temp
+
+# Note: requirements.txt is NOT listed above, so it WILL be included
+
