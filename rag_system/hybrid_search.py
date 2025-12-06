@@ -320,4 +320,3 @@ def test_hybrid_search():
 
 if __name__ == "__main__":
     test_hybrid_search()
-

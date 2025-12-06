@@ -308,13 +308,23 @@ if search_clicked:
                     answer_placeholder = st.empty()
                     full_answer = ""
                     
-                    # Stream the answer
-                    for chunk in results['answer']:
-                        full_answer += chunk
-                        answer_placeholder.info(full_answer + "▌")
-                    
-                    # Final answer without cursor
-                    answer_placeholder.info(full_answer)
+                    # Stream the answer with error handling
+                    try:
+                        for chunk in results['answer']:
+                            full_answer += chunk
+                            answer_placeholder.info(full_answer + "▌")
+                        
+                        # Final answer without cursor
+                        answer_placeholder.info(full_answer)
+                    except Exception as stream_error:
+                        # Handle streaming errors gracefully
+                        if full_answer:
+                            # Show partial answer if we got some content
+                            answer_placeholder.warning(full_answer + f"\n\n⚠️ Streaming interrupted: {str(stream_error)}")
+                        else:
+                            # Show error if no content received
+                            answer_placeholder.error(f"❌ Streaming error: {str(stream_error)}")
+                            full_answer = f"Error during streaming: {str(stream_error)}"
                     
                     # Update results with full answer for later use
                     results['answer'] = full_answer
