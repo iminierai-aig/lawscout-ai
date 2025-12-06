@@ -17,9 +17,13 @@ def get_rag_engine():
 
 rag = get_rag_engine()
 
-# Initialize session state for quick search
+# Initialize session state
 if "query" not in st.session_state:
     st.session_state.query = ""
+if "query_history" not in st.session_state:
+    st.session_state.query_history = []
+if "current_results" not in st.session_state:
+    st.session_state.current_results = None
 
 # ========== SIDEBAR ==========
 # Permanent red warning banner at top
@@ -86,6 +90,16 @@ with st.sidebar.expander("🔀 Cross-Domain Queries"):
 
 st.sidebar.markdown("---")
 
+# ========== QUERY HISTORY ==========
+if st.session_state.query_history:
+    with st.sidebar.expander("📜 Query History", expanded=False):
+        for i, hist_query in enumerate(reversed(st.session_state.query_history[-10:])):
+            if st.button(f"🔄 {hist_query[:40]}...", key=f"hist_{i}", use_container_width=True):
+                st.session_state.query = hist_query
+                st.rerun()
+
+st.sidebar.markdown("---")
+
 # ========== QUICK SEARCH BUTTONS ==========
 st.sidebar.markdown("### 🚀 Quick Search")
 
@@ -142,6 +156,68 @@ with st.sidebar.expander("⚙️ Settings", expanded=True):
         help="Display full source document excerpts"
     )
 
+# ========== ADVANCED FILTERS ==========
+with st.sidebar.expander("🔍 Advanced Filters", expanded=False):
+    st.markdown("**Search Methods:**")
+    
+    use_hybrid = st.checkbox(
+        "Hybrid Search (Semantic + Keyword)",
+        value=True,
+        help="Combines semantic understanding with keyword matching (BM25)"
+    )
+    
+    use_reranking = st.checkbox(
+        "Cross-Encoder Reranking",
+        value=True,
+        help="Uses advanced model to rerank results for better relevance"
+    )
+    
+    extract_citations = st.checkbox(
+        "Extract Citations",
+        value=True,
+        help="Automatically extract and link legal citations"
+    )
+    
+    st.markdown("---")
+    st.markdown("**Date Range (Cases Only):**")
+    st.info("ℹ️ Filters require indexed metadata. Currently disabled until data has these fields.")
+    
+    use_date_filter = st.checkbox("Enable Date Filter", value=False, disabled=True)
+    
+    if use_date_filter:
+        col1, col2 = st.columns(2)
+        with col1:
+            start_year = st.number_input("From Year", min_value=1900, max_value=2025, value=2000)
+        with col2:
+            end_year = st.number_input("To Year", min_value=1900, max_value=2025, value=2025)
+        date_range = (f"{start_year}-01-01", f"{end_year}-12-31")
+    else:
+        date_range = None
+    
+    st.markdown("---")
+    st.markdown("**Jurisdiction (Cases Only):**")
+    
+    jurisdiction = st.selectbox(
+        "Select Jurisdiction",
+        ["All", "Federal", "California", "New York", "Texas", "Florida"],
+        help="Filter by legal jurisdiction",
+        disabled=True
+    )
+    
+    jurisdiction = None  # Disabled for now
+    
+    st.markdown("---")
+    st.markdown("**Court Level (Cases Only):**")
+    
+    court_level = st.selectbox(
+        "Select Court",
+        ["All", "Supreme Court", "Circuit Court", "District Court", "State Supreme Court"],
+        help="Filter by court level",
+        disabled=True
+    )
+    
+    court_level = None  # Disabled for now
+
 st.sidebar.markdown("---")
 
 # ========== SYSTEM STATUS ==========
@@ -153,6 +229,18 @@ with col1:
 with col2:
     st.metric("Courts", "6")
     st.metric("Vectors", "384-dim")
+
+# Analytics Summary
+analytics = rag.get_analytics()
+if analytics:
+    st.sidebar.markdown("---")
+    st.sidebar.markdown("### 📈 Session Stats")
+    col1, col2 = st.sidebar.columns(2)
+    with col1:
+        st.metric("Queries", len(analytics))
+    with col2:
+        avg_time = sum(a.get('total_time', 0) for a in analytics) / len(analytics)
+        st.metric("Avg Time", f"{avg_time:.2f}s")
 
 st.sidebar.markdown("---")
 
@@ -182,22 +270,56 @@ search_clicked = st.button("🔎 Search", type="primary", use_container_width=Tr
 # Search button logic
 if search_clicked:
     if query:
+        # Add to query history
+        if query not in st.session_state.query_history:
+            st.session_state.query_history.append(query)
+        
         with st.spinner(f"🔍 Searching {limit} documents across {collection}..."):
                 try:
-                    # Use ask() method which combines search + answer generation
+                    # Build filters dictionary
+                    filters = {}
+                    if date_range:
+                        filters['date_range'] = date_range
+                    if jurisdiction:
+                        filters['jurisdiction'] = jurisdiction
+                    if court_level:
+                        filters['court'] = court_level
+                    
+                    # Use ask() method with all advanced features
                     results = rag.ask(
                         query=query,
                         collection_type=collection,
                         limit=limit,
-                        return_sources=show_sources
+                        return_sources=show_sources,
+                        stream=True,  # Enable streaming
+                        filters=filters if filters else None,
+                        use_hybrid=use_hybrid,
+                        use_reranking=use_reranking,
+                        extract_citations=extract_citations
                     )
                     
-                    # Display AI Answer
+                    # Store results in session state
+                    st.session_state.current_results = results
+                    
+                    # Display AI Answer with Streaming
                     st.markdown("---")
                     st.markdown("### 💡 Answer")
-                    st.info(results['answer'])
                     
-                    # Display Sources
+                    answer_placeholder = st.empty()
+                    full_answer = ""
+                    
+                    # Stream the answer
+                    for chunk in results['answer']:
+                        full_answer += chunk
+                        answer_placeholder.info(full_answer + "▌")
+                    
+                    # Final answer without cursor
+                    answer_placeholder.info(full_answer)
+                    
+                    # Update results with full answer for later use
+                    results['answer'] = full_answer
+                    
+                    # Display Sources with Enhanced Information
                     if show_sources and results.get('sources'):
                         st.markdown("---")
                         st.markdown("### 📚 Sources")
@@ -208,12 +330,47 @@ if search_clicked:
                             collection_name = doc.get('collection', 'Unknown')
                             text_content = doc.get('text', '')
                             
+                            # Build title with score details
+                            score_details = []
+                            if 'rerank_score' in doc:
+                                score_details.append(f"Rerank: {doc['rerank_score']:.1%}")
+                            if 'semantic_score' in doc:
+                                score_details.append(f"Semantic: {doc['semantic_score']:.1%}")
+                            if 'bm25_score' in doc:
+                                score_details.append(f"BM25: {doc['bm25_score']:.2f}")
+                            
+                            score_info = " | ".join(score_details) if score_details else f"{relevance:.1%} relevance"
+                            
                             with st.expander(
-                                f"📄 **Source {i}:** {title[:80]}... ({relevance:.1%} relevance)",
+                                f"📄 **Source {i}:** {title[:60]}... ({score_info})",
                                 expanded=(i == 1)
                             ):
-                                st.markdown(f"**Collection:** `{collection_name}`")
-                                st.markdown(f"**Relevance Score:** {relevance:.2%}")
+                                col1, col2 = st.columns([2, 1])
+                                with col1:
+                                    st.markdown(f"**Collection:** `{collection_name}`")
+                                with col2:
+                                    st.markdown(f"**Final Score:** {relevance:.2%}")
+                                
+                                # Show score breakdown if available
+                                if score_details:
+                                    st.markdown("**Score Breakdown:**")
+                                    score_cols = st.columns(3)
+                                    if 'rerank_score' in doc:
+                                        score_cols[0].metric("Rerank", f"{doc['rerank_score']:.1%}")
+                                    if 'semantic_score' in doc:
+                                        score_cols[1].metric("Semantic", f"{doc['semantic_score']:.1%}")
+                                    if 'bm25_score' in doc:
+                                        score_cols[2].metric("BM25", f"{doc['bm25_score']:.2f}")
+                                
+                                # Display citations if extracted
+                                if 'citations' in doc and doc['citations']:
+                                    st.markdown("**📎 Citations Found:**")
+                                    for cit in doc['citations']:
+                                        if cit.get('link'):
+                                            st.markdown(f"- [{cit['text']}]({cit['link']}) (CourtListener)")
+                                        else:
+                                            st.markdown(f"- {cit['text']}")
+                                
                                 st.markdown("**Content:**")
                                 st.text_area(
                                     "Document excerpt",
@@ -223,9 +380,9 @@ if search_clicked:
                                     label_visibility="collapsed"
                                 )
                     
-                    # Display Metrics
+                    # Display Metrics with Performance Data
                     st.markdown("---")
-                    col1, col2, col3 = st.columns(3)
+                    col1, col2, col3, col4 = st.columns(4)
                     with col1:
                         st.metric(
                             "Documents Searched",
@@ -248,6 +405,44 @@ if search_clicked:
                             )
                         else:
                             st.metric("Top Match Score", "N/A")
+                    with col4:
+                        search_time = results.get('search_time', 0)
+                        st.metric(
+                            "Search Time",
+                            f"{search_time:.2f}s",
+                            help="Vector search latency"
+                        )
+                    
+                    # Export functionality
+                    st.markdown("---")
+                    col1, col2 = st.columns([3, 1])
+                    with col2:
+                        # Create exportable content
+                        export_content = f"""# LawScout AI Research Results
+                        
+Query: {query}
+Date: {results.get('search_time', 'N/A')}
+Collection: {collection}
+
+## Answer
+{full_answer}
+
+## Sources
+"""
+                        if results.get('sources'):
+                            for i, source in enumerate(results['sources'], 1):
+                                export_content += f"\n### Source {i}\n"
+                                export_content += f"Title: {source.get('source', 'Unknown')}\n"
+                                export_content += f"Relevance: {source.get('score', 0):.2%}\n"
+                                export_content += f"Content: {source.get('text', '')}\n"
+                        
+                        st.download_button(
+                            label="📥 Export Results",
+                            data=export_content,
+                            file_name=f"lawscout_research_{query[:30].replace(' ', '_')}.md",
+                            mime="text/markdown",
+                            use_container_width=True
+                        )
                             
                 except Exception as e:
                     st.error(f"❌ Search error: {str(e)}")

@@ -4,74 +4,65 @@ __pycache__/
 *$py.class
 *.so
 .Python
-env/
-venv/
-.venv/
-ENV/
-build/
-dist/
 *.egg-info/
+dist/
+build/
 
-# Data (exclude large data files)
-data/
-*.json
-*.csv
-*.parquet
-
-# Local Qdrant storage
-qdrant_storage/
-
-# Credentials
+# Virtual environments
 .env
-*.key
-*.pem
-credentials.json
+.venv
+venv/
+ENV/
+env/
+
+# Git
+.git/
+.gitignore
+.gitattributes
 
 # IDE
 .vscode/
 .idea/
 *.swp
 *.swo
-
-# OS
 .DS_Store
-Thumbs.db
+
+# Data files (already in Qdrant Cloud!)
+data_collection/
+preprocessing/
+embeddings/
+vector_db/
+*.json
+*.jsonl
+*.csv
+*.parquet
+*.pkl
+
+# Documentation
+*.md
+README.md
+LICENSE
+docs/
+
+# CI/CD
+.github/
+deployment/
+cloudbuild.yaml
+
+# Testing
+tests/
+.pytest_cache/
+.coverage
+
+# Dev dependencies
+requirements-dev.txt
 
 # Logs
 *.log
-logs/
 
-# Reports
-reports/
-
-# Backup files
-*.bak
-*.OLD
-*.backup
-*_backup/
-*_old/
-corrupted_backup/
-
-# Backup directories
-lawscout-ai.backup/
-
-# Git
-.git/
-.gitignore
-
-# Documentation (optional - can include if needed)
-# *.md
-# CLEANUP.md
-# GITHUB_SETUP.md
-# PRE_GITHUB_CHECKLIST.md
-
-# Tests
-tests/
-*.test.py
-
-# Temporary files
-*.tmp
-*.temp
-
-# IMPORTANT: requirements.txt MUST be included
-# No *.txt pattern above, so requirements.txt will be included by default
+# Model files (if any local)
+models/
+*.pt
+*.pth
+*.bin
+*.h5

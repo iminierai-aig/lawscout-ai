@@ -1,12 +1,23 @@
-streamlit==1.29.0
-qdrant-client==1.7.0
-sentence-transformers>=2.7.0
-google-generativeai>=0.3.2
-torch>=2.2.0
-numpy<2.0
-huggingface-hub>=0.34.0,<1.0
-requests>=2.32.2
-tqdm==4.66.1
-datasets>=2.20.0
-python-dotenv==1.0.0
-watchdog>=3.0.0
+# Web framework
+streamlit==1.31.1
+
+# Vector DB
+qdrant-client==1.11.3
+
+# LLM for generation
+google-generativeai==0.8.3
+python-dotenv==1.0.1
+
+# Embeddings - CPU optimized (saves ~400MB vs GPU version)
+sentence-transformers==3.3.1
+
+# Analytics tracking
+pandas==2.2.3
+plotly==5.24.1
+
+# Hybrid search & reranking
+rank-bm25==0.2.2
+transformers==4.46.3
+
+# Citation extraction
+regex==2024.11.6
