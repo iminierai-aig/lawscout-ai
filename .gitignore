@@ -79,3 +79,16 @@ SAFE_*.md
 pre_deploy*.sh
 test_new_*.py
 
+# AI planning documents (ephemeral - store in history/ directory)
+history/
+*_PLAN.md
+*_DESIGN.md
+*_ARCHITECTURE.md
+*_IMPLEMENTATION.md
+CODEBASE_SUMMARY.md
+INTEGRATION_PLAN.md
+TECHNICAL_DESIGN.md
+
+# Beads issue tracking (auto-synced)
+.beads/beads.db
+
