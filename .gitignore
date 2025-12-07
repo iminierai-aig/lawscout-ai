@@ -59,3 +59,23 @@ app_backup_original.py
 # Local testing
 verify_embeddings.py
 
+# Temporary documentation files
+*_TEMP.md
+*_STATUS.md
+DEPLOY*.md
+BUGFIXES*.md
+*_READY*.md
+IMPROVEMENTS*.md
+RESTART*.md
+TEST_FIRST.md
+WORKING_*.md
+WHATS_NEW.md
+FEATURE_*.md
+ADVANCED_*.md
+QUICK_*.md
+SAFE_*.md
+
+# Temporary scripts
+pre_deploy*.sh
+test_new_*.py
+

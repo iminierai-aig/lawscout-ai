@@ -13,11 +13,13 @@ LawScout AI is an affordable, AI-powered legal research tool designed for solo p
 
 ### Features
 
-- **171K+ Vector Embeddings** - Federal case law + commercial contracts
-- **Natural Language Search** - Ask questions in plain English
-- **AI-Generated Answers** - Powered by Google Gemini with source citations
-- **Fast Response** - 2-4 second query times
-- **Cloud Native** - Deploys to Google Cloud Run
+- **240K+ Legal Documents** - Federal case law + commercial contracts
+- **Hybrid Search** - Semantic understanding + keyword matching (BM25)
+- **ML-Powered Reranking** - Cross-encoder for improved relevance
+- **Citation Extraction** - Automatic legal citation detection with CourtListener links
+- **AI-Generated Answers** - Powered by Gemini 2.5 Flash with source citations
+- **Fast Response** - 3-4 second query times
+- **Cloud Native** - Deploys to Google Cloud Run or Render
 
 ---
 
@@ -85,20 +87,22 @@ streamlit run web_app/app.py
 
 ```
 lawscout-ai/
-├── rag_system/          # RAG engine & query handling
-│   ├── rag_engine.py    # Core RAG implementation
-│   └── query_handler.py # Query processing
-├── web_app/             # Streamlit frontend
-│   └── app.py           # Main application
-├── deployment/          # Deployment scripts
-│   └── deploy.sh        # Cloud Run deployment
-├── data_collection/     # Data collection scripts
-├── preprocessing/       # Text cleaning & chunking
-├── embeddings/          # Embedding generation
-├── vector_db/           # Qdrant setup & population
-├── Dockerfile           # Container configuration
-├── cloudbuild.yaml      # Cloud Build configuration
-└── requirements.txt     # Python dependencies
+├── rag_system/              # RAG engine & query handling
+│   ├── rag_engine.py        # Core RAG with hybrid search
+│   ├── hybrid_search.py     # Hybrid search & reranking
+│   ├── citation_utils.py    # Citation extraction
+│   └── query_handler.py     # Query processing
+├── web_app/                 # Streamlit frontend
+│   └── app.py               # Main application
+├── tests/                   # Test suite
+├── deployment/              # Deployment scripts
+├── data_collection/         # Data collection scripts
+├── preprocessing/           # Text cleaning & chunking
+├── embeddings/              # Embedding generation
+├── vector_db/               # Qdrant setup & population
+├── Dockerfile               # Container configuration
+├── cloudbuild.yaml          # Cloud Build configuration
+└── requirements.txt         # Python dependencies
 ```
 
 ---
