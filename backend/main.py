@@ -7,6 +7,7 @@ import logging
 from pathlib import Path
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.gzip import GZipMiddleware
 from contextlib import asynccontextmanager
 from dotenv import load_dotenv
 
@@ -58,6 +59,9 @@ app = FastAPI(
     version="2.1.1",
     lifespan=lifespan
 )
+
+# Response compression - reduces network transfer time significantly
+app.add_middleware(GZipMiddleware, minimum_size=1000)
 
 # CORS - Allow both old (Streamlit) and new (Next.js) frontends
 app.add_middleware(

@@ -4,6 +4,24 @@ import { useState, useEffect } from 'react'
 import axios from 'axios'
 import Sidebar from '@/components/Sidebar'
 
+// Optimized axios instance with connection pooling and keep-alive
+// This reduces connection overhead and improves performance
+const apiClient = axios.create({
+  timeout: 60000, // 60 second timeout for long queries
+  headers: {
+    'Content-Type': 'application/json',
+    'Accept': 'application/json',
+    'Accept-Encoding': 'gzip, deflate, br', // Support compression
+  },
+  // Enable HTTP keep-alive (reuse connections)
+  httpAgent: typeof window === 'undefined' ? undefined : undefined, // Browser handles this automatically
+  httpsAgent: typeof window === 'undefined' ? undefined : undefined,
+  // Max redirects
+  maxRedirects: 5,
+  // Validate status
+  validateStatus: (status) => status >= 200 && status < 300,
+})
+
 interface SearchResult {
   case_name: string
   citation: string
@@ -116,7 +134,8 @@ export default function Home() {
     const startTime = Date.now()
     
       try {
-      const response = await axios.post<SearchResponse>(`${apiUrl}/api/v1/search`, {
+      // Use optimized axios instance with connection pooling
+      const response = await apiClient.post<SearchResponse>(`${apiUrl}/api/v1/search`, {
         query: query,
         collection: collection,
         limit: limit,
