@@ -342,7 +342,9 @@ Note: LLM answer generation is temporarily unavailable. Check your Gemini API ke
         Returns:
             Dict with answer, sources, and metadata
         """
+        import time as time_module
         start_time = datetime.now()
+        total_start = time_module.time()
         
         print("\n" + "=" * 60)
         print("💬 Legal Research Query")
@@ -350,6 +352,7 @@ Note: LLM answer generation is temporarily unavailable. Check your Gemini API ke
         
         # Step 1: Advanced search with hybrid + reranking
         search_start = datetime.now()
+        search_start_time = time_module.time()
         results = self.search(
             query=query,
             collection_type=collection_type,
@@ -359,6 +362,8 @@ Note: LLM answer generation is temporarily unavailable. Check your Gemini API ke
             use_reranking=use_reranking
         )
         search_time = (datetime.now() - search_start).total_seconds()
+        search_elapsed = time_module.time() - search_start_time
+        print(f"⏱️  Search completed in {search_elapsed:.2f}s")
         
         if not results:
             self._track_analytics(query, collection_type, 0, 0, search_time, 0)
@@ -369,10 +374,14 @@ Note: LLM answer generation is temporarily unavailable. Check your Gemini API ke
         
         # Step 2: Generate answer
         gen_start = datetime.now()
+        gen_start_time = time_module.time()
         answer = self.generate_answer(query, results, stream=stream)
         
         # If streaming, don't calculate gen_time yet
         gen_time = 0 if stream else (datetime.now() - gen_start).total_seconds()
+        if not stream:
+            gen_elapsed = time_module.time() - gen_start_time
+            print(f"⏱️  Answer generation completed in {gen_elapsed:.2f}s")
         
         # Step 3: Prepare response
         response = {

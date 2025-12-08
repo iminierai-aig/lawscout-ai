@@ -8,6 +8,9 @@ class SearchRequest(BaseModel):
     query: str = Field(..., description="Legal search query")
     collection: str = Field("both", description="Which collection to search")
     limit: int = Field(10, ge=1, le=50, description="Number of results")
+    use_hybrid: Optional[bool] = Field(True, description="Use hybrid search (semantic + BM25)")
+    use_reranking: Optional[bool] = Field(True, description="Use cross-encoder reranking")
+    extract_citations: Optional[bool] = Field(True, description="Extract and link citations")
 
 class SourceMetadata(BaseModel):
     title: str

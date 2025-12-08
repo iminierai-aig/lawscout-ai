@@ -3,9 +3,29 @@ LawScout AI - FastAPI Backend
 Wraps existing RAG engine without modifying it
 """
 import os
+import logging
+from pathlib import Path
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
+from dotenv import load_dotenv
+
+# Setup logging to file
+log_dir = Path("logs")
+log_dir.mkdir(exist_ok=True)
+log_file = log_dir / "backend.log"
+
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.FileHandler(log_file),
+        logging.StreamHandler()  # Also log to console
+    ]
+)
+
+# Load environment variables
+load_dotenv()
 
 # Import your existing RAG engine (NO CHANGES TO YOUR CODE!)
 from rag_system.rag_engine import LegalRAGEngine
@@ -35,7 +55,7 @@ async def lifespan(app: FastAPI):
 # Create FastAPI app
 app = FastAPI(
     title="LawScout AI API",
-    version="2.1.0",
+    version="2.1.1",
     lifespan=lifespan
 )
 
@@ -57,9 +77,16 @@ app.add_middleware(
 @app.get("/health")
 async def health():
     """Health check for monitoring"""
+    import psutil
+    import os
+    
+    memory_mb = psutil.Process(os.getpid()).memory_info().rss / 1024 / 1024
+    
     return {
         "status": "healthy",
-        "rag_engine": "initialized" if rag_engine else "not_initialized"
+        "rag_engine": "initialized" if rag_engine else "not_initialized",
+        "memory_mb": round(memory_mb, 2),
+        "memory_warning": memory_mb > 1800  # Warn if > 90% of 2GB
     }
 
 # Import routes

@@ -33,6 +33,9 @@ async def search(request: SearchRequest, req: Request):
         
         rag_engine = req.app.state.rag_engine
         
+        import time as time_module
+        request_start = time_module.time()
+        
         logger.info(f"Search query: {request.query[:100]}...")
         
         # Call your EXISTING RAG engine using ask() for full RAG pipeline
@@ -44,12 +47,18 @@ async def search(request: SearchRequest, req: Request):
             limit=request.limit,
             return_sources=True,
             stream=False,
-            use_hybrid=True,
-            use_reranking=True,
-            extract_citations=True
+            use_hybrid=getattr(request, 'use_hybrid', True),
+            use_reranking=getattr(request, 'use_reranking', True),
+            extract_citations=getattr(request, 'extract_citations', True)
         )
         
-        logger.info(f"Search completed: {len(results.get('sources', []))} sources found")
+        request_time = time_module.time() - request_start
+        logger.info(
+            f"Search completed: {len(results.get('sources', []))} sources found | "
+            f"Total time: {request_time:.2f}s | "
+            f"Search time: {results.get('search_time', 0):.2f}s | "
+            f"Generation time: {results.get('generation_time', 0):.2f}s"
+        )
         
         # Transform to API response format
         sources_list = []

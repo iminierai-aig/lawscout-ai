@@ -2,20 +2,34 @@
 fastapi==0.109.0
 uvicorn[standard]==0.27.0
 gunicorn==21.2.0
+python-multipart==0.0.6
 
 # Vector Database
 qdrant-client==1.7.0
 
-# LLM & AI
+# LLM (Google Gemini only - no local models needed)
 google-generativeai==0.3.2
+
+# Embeddings (lightweight - PyTorch CPU installed separately in Dockerfile)
 sentence-transformers==2.3.1
+transformers>=4.30.0  # Required by sentence-transformers for CrossEncoder reranking
+
+# Transformers library dependencies (explicitly listed to avoid runtime errors)
+tqdm>=4.27.0  # Progress bars
+filelock>=3.12.0  # File locking for model downloads
+huggingface-hub>=0.34.0,<1.0  # Model hub integration
+packaging>=20.0  # Version parsing
+pyyaml>=5.1  # YAML parsing for configs
+regex>=2022.1.18  # Advanced regex (note: !=2019.12.17)
+tokenizers>=0.22.0,<=0.23.0  # Fast tokenization
+safetensors>=0.4.3  # Safe tensor serialization
 
 # Search & Ranking
 rank-bm25==0.2.2
 
-# Data Processing
-pandas==2.1.4
-numpy==1.26.3
+# Data Processing (minimal - only if needed)
+numpy>=1.24.0,<2.0  # Required for sentence-transformers and hybrid search (must be <2.0 for PyTorch compatibility)
+# pandas removed - not needed for production
 
 # Utilities
 python-dotenv==1.0.0
@@ -26,5 +40,5 @@ pydantic-settings==2.1.0
 httpx==0.26.0
 requests==2.31.0
 
-# CORS & Security
-python-multipart==0.0.6
+# System monitoring
+psutil==5.9.8

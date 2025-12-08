@@ -40,6 +40,7 @@ Thumbs.db
 # Logs
 *.log
 logs/
+backend/logs/
 
 # Reports
 reports/
@@ -62,7 +63,7 @@ verify_embeddings.py
 # Temporary documentation files
 *_TEMP.md
 *_STATUS.md
-DEPLOY*.md
+# DEPLOYMENT.md is kept (permanent deployment guide)
 BUGFIXES*.md
 *_READY*.md
 IMPROVEMENTS*.md
@@ -74,6 +75,8 @@ FEATURE_*.md
 ADVANCED_*.md
 QUICK_*.md
 SAFE_*.md
+LOCAL_TESTING*.md
+ENHANCEMENTS.md
 
 # Temporary scripts
 pre_deploy*.sh
