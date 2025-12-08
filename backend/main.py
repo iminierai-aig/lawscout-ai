@@ -63,10 +63,11 @@ app = FastAPI(
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
-        "https://lawscoutai.com",           # Current Streamlit
-        "https://beta.lawscoutai.com",      # New Next.js
-        "http://localhost:3000",            # Local Next.js dev
-        "http://localhost:8501",            # Local Streamlit dev
+        "https://lawscoutai.com",                    # Current Streamlit
+        "https://beta.lawscoutai.com",               # New Next.js
+        "https://lawscout-frontend-latest.onrender.com",  # Render frontend
+        "http://localhost:3000",                     # Local Next.js dev
+        "http://localhost:8501",                     # Local Streamlit dev
     ],
     allow_credentials=True,
     allow_methods=["*"],

@@ -62,7 +62,15 @@ export default function Home() {
   const [useReranking, setUseReranking] = useState(true)
   const [extractCitations, setExtractCitations] = useState(true)
 
+  // Get API URL - Next.js bakes NEXT_PUBLIC_* vars at build time
+  // For production, this should be set as build arg in Dockerfile
   const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
+  
+  // Debug: Log the API URL being used (only in browser console)
+  useEffect(() => {
+    console.log('🔍 Frontend API URL:', apiUrl)
+    console.log('🔍 Environment variable:', process.env.NEXT_PUBLIC_API_URL)
+  }, [apiUrl])
 
   // Load query history from localStorage
   useEffect(() => {
@@ -143,8 +151,27 @@ export default function Home() {
         setExpandedSources({ 0: true })
       }
     } catch (err: any) {
-      setError(err.response?.data?.detail || 'Search failed. Please try again.')
-      console.error('Search error:', err)
+      // Enhanced error logging for debugging
+      console.error('🔴 Search error details:', {
+        message: err.message,
+        response: err.response?.data,
+        status: err.response?.status,
+        url: `${apiUrl}/api/v1/search`,
+        code: err.code,
+        config: err.config
+      })
+      
+      // More detailed error message
+      let errorMsg = 'Search failed. Please try again.'
+      if (err.response?.data?.detail) {
+        errorMsg = err.response.data.detail
+      } else if (err.message) {
+        errorMsg = `Network error: ${err.message}`
+      } else if (err.code === 'ERR_NETWORK' || err.code === 'ECONNREFUSED') {
+        errorMsg = `Cannot connect to backend at ${apiUrl}. Please check the API URL configuration.`
+      }
+      
+      setError(errorMsg)
     } finally {
       setLoading(false)
     }
