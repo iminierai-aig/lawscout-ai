@@ -48,7 +48,7 @@ fi
 # Check for PyTorch
 if ! python -c "import torch" 2>/dev/null; then
     echo "📥 Installing PyTorch CPU..."
-    pip install torch==2.1.0+cpu --index-url https://download.pytorch.org/whl/cpu
+    pip install torch==2.2.0+cpu --index-url https://download.pytorch.org/whl/cpu
     echo ""
 fi
 

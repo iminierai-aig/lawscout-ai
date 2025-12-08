@@ -13,9 +13,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 # Install PyTorch CPU-only first (much smaller than full PyTorch)
-# This reduces sentence-transformers dependencies significantly
+# Version 2.2.0 required for transformers>=4.30.0 (pytree API)
 RUN pip install --no-cache-dir --user \
-    torch==2.1.0+cpu \
+    torch==2.2.0+cpu \
     --index-url https://download.pytorch.org/whl/cpu
 
 # Copy and install Python dependencies
