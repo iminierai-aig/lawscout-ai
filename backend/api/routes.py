@@ -96,10 +96,11 @@ async def search(request: SearchRequest, req: Request):
             _query_cache[cache_key] = cached_result
             
             # Return cached result with aggressive caching headers for CDN
-            response = JSONResponse(content=cached_result.dict())
+            response = JSONResponse(content=cached_result.model_dump())
             response.headers["Cache-Control"] = "public, max-age=3600, s-maxage=3600"  # 1 hour CDN cache
             response.headers["ETag"] = f'"{cache_key}"'
             response.headers["Vary"] = "Accept-Encoding"
+            response.headers["X-Cache-Status"] = "HIT"  # For debugging
             return response
         
         logger.info(f"Search query: {request.query[:100]}...")
@@ -154,7 +155,7 @@ async def search(request: SearchRequest, req: Request):
         # Add caching headers for CDN (Cloudflare)
         # Cache-Control: public = can be cached by CDN, max-age = browser cache, s-maxage = CDN cache
         # ETag: allows conditional requests (304 Not Modified)
-        json_response = JSONResponse(content=response.dict())
+        json_response = JSONResponse(content=response.model_dump())
         json_response.headers["Cache-Control"] = "public, max-age=300, s-maxage=1800"  # 5min browser, 30min CDN
         json_response.headers["ETag"] = f'"{cache_key}"'
         json_response.headers["Vary"] = "Accept-Encoding"
