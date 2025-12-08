@@ -3,7 +3,7 @@ API Routes - Thin wrapper around existing RAG engine
 Optimized for performance to match monolithic Streamlit version
 """
 from fastapi import APIRouter, HTTPException, Request
-from fastapi.responses import Response
+from fastapi.responses import Response, JSONResponse
 from .models import SearchRequest, SearchResponse, ErrorResponse
 import logging
 import asyncio
@@ -12,6 +12,7 @@ from functools import lru_cache
 import hashlib
 import json
 import time
+from datetime import datetime, timedelta
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -93,7 +94,13 @@ async def search(request: SearchRequest, req: Request):
             # Move to end (LRU behavior)
             _query_cache.pop(cache_key)
             _query_cache[cache_key] = cached_result
-            return cached_result
+            
+            # Return cached result with aggressive caching headers for CDN
+            response = JSONResponse(content=cached_result.dict())
+            response.headers["Cache-Control"] = "public, max-age=3600, s-maxage=3600"  # 1 hour CDN cache
+            response.headers["ETag"] = f'"{cache_key}"'
+            response.headers["Vary"] = "Accept-Encoding"
+            return response
         
         logger.info(f"Search query: {request.query[:100]}...")
         
@@ -144,7 +151,16 @@ async def search(request: SearchRequest, req: Request):
             f"Generation time: {results.get('generation_time', 0):.2f}s"
         )
         
-        return response
+        # Add caching headers for CDN (Cloudflare)
+        # Cache-Control: public = can be cached by CDN, max-age = browser cache, s-maxage = CDN cache
+        # ETag: allows conditional requests (304 Not Modified)
+        json_response = JSONResponse(content=response.dict())
+        json_response.headers["Cache-Control"] = "public, max-age=300, s-maxage=1800"  # 5min browser, 30min CDN
+        json_response.headers["ETag"] = f'"{cache_key}"'
+        json_response.headers["Vary"] = "Accept-Encoding"
+        json_response.headers["X-Cache-Status"] = "MISS"  # For debugging
+        
+        return json_response
         
     except Exception as e:
         logger.error(f"Search failed: {str(e)}", exc_info=True)

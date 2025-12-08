@@ -61,6 +61,7 @@ app = FastAPI(
 )
 
 # Response compression - reduces network transfer time significantly
+# This works great with Cloudflare CDN which also compresses responses
 app.add_middleware(GZipMiddleware, minimum_size=1000)
 
 # CORS - Allow both old (Streamlit) and new (Next.js) frontends
