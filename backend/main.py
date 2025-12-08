@@ -68,9 +68,10 @@ app.add_middleware(GZipMiddleware, minimum_size=1000)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
-        "https://lawscoutai.com",                    # Current Streamlit
-        "https://beta.lawscoutai.com",               # New Next.js
-        "https://lawscout-frontend-latest.onrender.com",  # Render frontend
+        "https://lawscoutai.com",                    # ✅ Cloudflare-proxied domain (REQUIRED - users access this)
+        "https://lawscout-frontend-latest.onrender.com",  # Render frontend origin (direct access)
+        "https://lawscout-backend-latest.onrender.com",   # Backend origin (for API docs)
+        "https://beta.lawscoutai.com",               # Beta domain (if used)
         "http://localhost:3000",                     # Local Next.js dev
         "http://localhost:8501",                     # Local Streamlit dev
     ],

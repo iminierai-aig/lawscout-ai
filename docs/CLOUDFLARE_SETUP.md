@@ -15,9 +15,15 @@ The monolithic Streamlit version benefits from Cloudflare, which is why it feels
 
 ### 1. Add Your Domain to Cloudflare
 
-1. Sign up at [cloudflare.com](https://www.cloudflare.com)
-2. Add your domain (e.g., `lawscout-frontend-latest.onrender.com`)
-3. Update DNS records to point to Cloudflare
+**Important:** You're proxying `lawscout-frontend-latest.onrender.com` to `lawscoutai.com`
+
+1. Your domain in Cloudflare: `lawscoutai.com` (the public-facing domain)
+2. Cloudflare proxies requests to: `lawscout-frontend-latest.onrender.com` (Render origin)
+3. DNS records should point `lawscoutai.com` → Cloudflare → Render
+
+**Current Setup:**
+- Public domain: `lawscoutai.com` (what users access)
+- Origin: `lawscout-frontend-latest.onrender.com` (where Cloudflare proxies to)
 
 ### 2. Configure Cloudflare for Frontend (Next.js)
 
@@ -25,7 +31,7 @@ The monolithic Streamlit version benefits from Cloudflare, which is why it feels
 
 Rule 1: Cache Static Assets (Highest Priority)
 ```
-URL Pattern: *lawscout-frontend-latest.onrender.com/_next/static/*
+URL Pattern: *lawscoutai.com/_next/static/*
 Settings:
   - Cache Level: Cache Everything
   - Edge Cache TTL: 1 year (31536000 seconds)
@@ -34,12 +40,14 @@ Settings:
 
 Rule 2: Cache HTML Pages
 ```
-URL Pattern: *lawscout-frontend-latest.onrender.com/*
+URL Pattern: *lawscoutai.com/*
 Settings:
   - Cache Level: Standard
   - Edge Cache TTL: 1 hour (3600 seconds)
   - Browser Cache TTL: Respect Existing Headers
 ```
+
+**Important:** Use `lawscoutai.com` in Page Rules (the public domain), NOT `lawscout-frontend-latest.onrender.com`!
 
 **Note:** If you only have 1 free Page Rule, use Rule 1 for static assets (most important).
 
@@ -47,17 +55,15 @@ Settings:
 
 **Page Rules (Use remaining free rules if available):**
 
-Rule 1: Cache API Responses (if you have a free rule available)
-```
-URL Pattern: *lawscout-backend-latest.onrender.com/api/v1/search*
-Settings:
-  - Cache Level: Respect Existing Headers
-  - Edge Cache TTL: 30 minutes (1800 seconds)
-  - Browser Cache TTL: Respect Existing Headers
-```
+**Backend Caching (No Page Rules needed):**
 
-**Alternative (No Page Rules needed):**
-The backend already sends proper `Cache-Control` headers, so Cloudflare's default caching will respect them automatically on the free tier.
+The backend already sends proper `Cache-Control` headers:
+- `Cache-Control: public, max-age=300, s-maxage=1800`
+- `ETag` headers for conditional requests
+
+Cloudflare's free tier will automatically respect these headers when proxying requests. No Page Rules needed for the backend!
+
+**Important:** Make sure your backend CORS includes `lawscoutai.com` (see backend configuration below).
 
 ### 4. Enable Cloudflare Features (All Free!)
 
@@ -81,32 +87,53 @@ The backend already sends proper `Cache-Control` headers, so Cloudflare's defaul
 - 0-RTT Connection Resumption: Enabled
 - IP Geolocation: Enabled
 
-### 5. Configure Render.com with Cloudflare
+### 5. Configure Backend CORS for Cloudflare Domain
 
-**For Frontend:**
-1. In Render Dashboard → Settings → Custom Domain
-2. Add your Cloudflare-managed domain
-3. Update DNS in Cloudflare to point to Render
+**Critical:** Your backend must allow requests from `lawscoutai.com` (the Cloudflare-proxied domain).
 
-**For Backend:**
-1. Same process as frontend
-2. Ensure CORS allows your Cloudflare domain
+Update `backend/main.py` CORS settings:
+```python
+allow_origins=[
+    "https://lawscoutai.com",                    # ✅ Cloudflare-proxied domain (REQUIRED)
+    "https://lawscout-frontend-latest.onrender.com",  # Render origin (for direct access)
+    "https://lawscout-backend-latest.onrender.com",   # Backend origin
+    "http://localhost:3000",                     # Local dev
+]
+```
 
-### 6. Verify Caching
+**Why:** When users access `lawscoutai.com`, Cloudflare proxies to Render, but the browser sees the request as coming from `lawscoutai.com`, so CORS must allow that domain.
+
+### 6. DNS Configuration in Cloudflare
+
+**For `lawscoutai.com`:**
+1. DNS Record Type: `CNAME` or `A` (depending on Render setup)
+2. Name: `@` (root domain) or `www` (if using www subdomain)
+3. Target: `lawscout-frontend-latest.onrender.com` (Render origin)
+4. Proxy Status: ✅ Proxied (orange cloud icon) - **This is critical!**
+
+**Verify:**
+- Orange cloud = Proxied through Cloudflare ✅
+- Gray cloud = DNS only (no CDN) ❌
+
+### 7. Verify Caching
 
 Test cache headers:
 ```bash
-# Check if responses are cached
-curl -I https://your-domain.com/api/v1/search \
+# Check frontend static assets (should be cached)
+curl -I https://lawscoutai.com/_next/static/some-file.js
+
+# Check backend API (should respect Cache-Control)
+curl -I https://lawscout-backend-latest.onrender.com/api/v1/search \
   -H "Accept-Encoding: gzip" \
   -X POST \
   -H "Content-Type: application/json" \
   -d '{"query":"test"}'
 
 # Look for:
-# - Cache-Control header
-# - ETag header
-# - CF-Cache-Status: HIT (if cached)
+# - Cache-Control header (from backend)
+# - ETag header (from backend)
+# - CF-Cache-Status: HIT (if cached by Cloudflare)
+# - CF-RAY header (confirms request went through Cloudflare)
 ```
 
 ## Expected Performance Gains
