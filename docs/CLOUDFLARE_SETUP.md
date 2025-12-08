@@ -21,55 +21,59 @@ The monolithic Streamlit version benefits from Cloudflare, which is why it feels
 
 ### 2. Configure Cloudflare for Frontend (Next.js)
 
-**Cache Rules:**
-- **Static Assets** (`.next/static/*`): Cache for 1 year
-- **HTML Pages**: Cache for 1 hour
-- **API Routes**: Don't cache (pass through)
+**Page Rules (Free Tier - 3 rules available):**
 
-**Page Rules:**
+Rule 1: Cache Static Assets (Highest Priority)
 ```
 URL Pattern: *lawscout-frontend-latest.onrender.com/_next/static/*
 Settings:
   - Cache Level: Cache Everything
-  - Edge Cache TTL: 1 year
+  - Edge Cache TTL: 1 year (31536000 seconds)
   - Browser Cache TTL: 1 year
 ```
 
+Rule 2: Cache HTML Pages
+```
+URL Pattern: *lawscout-frontend-latest.onrender.com/*
+Settings:
+  - Cache Level: Standard
+  - Edge Cache TTL: 1 hour (3600 seconds)
+  - Browser Cache TTL: Respect Existing Headers
+```
+
+**Note:** If you only have 1 free Page Rule, use Rule 1 for static assets (most important).
+
 ### 3. Configure Cloudflare for Backend (FastAPI)
 
-**Cache Rules:**
-- **API Responses**: Cache based on Cache-Control headers
-- **Health Endpoint**: Don't cache
+**Page Rules (Use remaining free rules if available):**
 
-**Page Rules:**
+Rule 1: Cache API Responses (if you have a free rule available)
 ```
 URL Pattern: *lawscout-backend-latest.onrender.com/api/v1/search*
 Settings:
   - Cache Level: Respect Existing Headers
-  - Edge Cache TTL: Use origin's Cache-Control
-  - Browser Cache TTL: Use origin's Cache-Control
+  - Edge Cache TTL: 30 minutes (1800 seconds)
+  - Browser Cache TTL: Respect Existing Headers
 ```
 
-**Transform Rules (Optional):**
-Add response headers for better caching:
-```
-Header: Cache-Control
-Value: public, max-age=300, s-maxage=1800
-```
+**Alternative (No Page Rules needed):**
+The backend already sends proper `Cache-Control` headers, so Cloudflare's default caching will respect them automatically on the free tier.
 
-### 4. Enable Cloudflare Features
+### 4. Enable Cloudflare Features (All Free!)
 
-**Speed Tab:**
-- ✅ Auto Minify: JavaScript, CSS, HTML
-- ✅ Brotli: Enabled
-- ✅ HTTP/2: Enabled
-- ✅ HTTP/3 (with QUIC): Enabled
-- ✅ 0-RTT Connection Resumption: Enabled
+**Speed Tab (Free Tier):**
+- ✅ Auto Minify: JavaScript, CSS, HTML (FREE)
+- ✅ Brotli: Enabled (FREE)
+- ✅ HTTP/2: Enabled (FREE)
+- ✅ HTTP/3 (with QUIC): Enabled (FREE)
+- ✅ 0-RTT Connection Resumption: Enabled (FREE)
 
-**Caching Tab:**
-- Caching Level: Standard
-- Browser Cache TTL: Respect Existing Headers
-- Always Online: Enabled
+**Caching Tab (Free Tier):**
+- Caching Level: Standard (FREE)
+- Browser Cache TTL: Respect Existing Headers (FREE)
+- Always Online: Enabled (FREE) - Only works if origin is down
+
+**Note:** All these features are available on the FREE plan!
 
 **Network Tab:**
 - HTTP/2: Enabled
@@ -143,12 +147,26 @@ Check cache hit rate:
 
 ## Cost
 
-Cloudflare Free Plan includes:
-- Unlimited bandwidth
-- DDoS protection
-- Global CDN
-- SSL/TLS certificates
-- Basic analytics
+✅ **Everything in this guide uses the FREE plan!**
 
-This is sufficient for most use cases!
+Cloudflare Free Plan includes:
+- ✅ Unlimited bandwidth
+- ✅ DDoS protection
+- ✅ Global CDN with 200+ edge locations
+- ✅ SSL/TLS certificates
+- ✅ Basic analytics
+- ✅ Auto Minify (JS/CSS/HTML)
+- ✅ Brotli compression
+- ✅ HTTP/2 and HTTP/3
+- ✅ 3 Page Rules (enough for basic setup)
+
+**No paid features required!** The backend's `Cache-Control` headers work perfectly with Cloudflare's free tier caching.
+
+## Free Tier Limitations (Not a Problem)
+
+- **3 Page Rules max** - Use 1-2 for static assets, backend will use default caching
+- **Basic analytics** - Still shows cache hit ratio and performance
+- **No Cache Rules** - Not needed! Our backend headers work with default caching
+
+All optimizations in this guide work perfectly on the free plan!
 
