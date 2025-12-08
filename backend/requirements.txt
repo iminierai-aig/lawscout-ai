@@ -1,13 +1,30 @@
-# FastAPI stack
+# Web Framework
 fastapi==0.109.0
 uvicorn[standard]==0.27.0
-pydantic==2.5.0
-python-dotenv==1.0.0
+gunicorn==21.2.0
 
-# Your existing dependencies (KEEP EXACT VERSIONS!)
+# Vector Database
 qdrant-client==1.7.0
-google-generativeai==0.3.0
-sentence-transformers==2.3.0
 
-# Additional for production
-gunicorn==21.2.0  # Production WSGI server
+# LLM & AI
+google-generativeai==0.3.2
+sentence-transformers==2.3.1
+
+# Search & Ranking
+rank-bm25==0.2.2
+
+# Data Processing
+pandas==2.1.4
+numpy==1.26.3
+
+# Utilities
+python-dotenv==1.0.0
+pydantic==2.5.3
+pydantic-settings==2.1.0
+
+# HTTP
+httpx==0.26.0
+requests==2.31.0
+
+# CORS & Security
+python-multipart==0.0.6

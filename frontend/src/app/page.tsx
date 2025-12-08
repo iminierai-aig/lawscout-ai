@@ -33,10 +33,22 @@ export default function Home() {
     try {
       const response = await axios.post(`${apiUrl}/api/v1/search`, {
         query: query,
-        top_k: 10
+        collection: 'both',
+        limit: 10
       })
       
-      setResults(response.data.results || [])
+      // Map API response to frontend interface
+      const mappedResults = (response.data.sources || []).map((source: any) => ({
+        case_name: source.metadata?.title || 'Unknown',
+        citation: source.metadata?.citation || 'N/A',
+        relevance_score: source.score || 0,
+        snippet: source.content?.substring(0, 300) || '',
+        court: source.metadata?.court || 'N/A',
+        date: source.metadata?.date || 'N/A',
+        url: source.metadata?.url
+      }))
+      
+      setResults(mappedResults)
       setSearchTime(Date.now() - startTime)
     } catch (err: any) {
       setError(err.response?.data?.detail || 'Search failed. Please try again.')

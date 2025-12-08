@@ -4,6 +4,7 @@ API Routes - Thin wrapper around existing RAG engine
 from fastapi import APIRouter, HTTPException, Request
 from .models import SearchRequest, SearchResponse, ErrorResponse
 import logging
+import asyncio
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -35,7 +36,9 @@ async def search(request: SearchRequest, req: Request):
         logger.info(f"Search query: {request.query[:100]}...")
         
         # Call your EXISTING RAG engine using ask() for full RAG pipeline
-        results = rag_engine.ask(
+        # Run in thread pool to avoid blocking the event loop
+        results = await asyncio.to_thread(
+            rag_engine.ask,
             query=request.query,
             collection_type=request.collection,
             limit=request.limit,
