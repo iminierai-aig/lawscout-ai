@@ -1,0 +1,33 @@
+# Cursor Rules for LawScout AI
+
+## Temporary Troubleshooting Files
+
+**CRITICAL**: When creating any temporary files during troubleshooting, debugging, or development sessions, ALWAYS place them in the `temp/` directory.
+
+### Files that MUST go in `temp/`:
+- Debug scripts (e.g., `debug_api.py`, `test_connection.sh`)
+- Temporary test files (e.g., `test_output.json`, `temp_data.csv`)
+- Troubleshooting notes (e.g., `troubleshoot_cors.md`, `debug_logs.txt`)
+- One-off test scripts
+- Temporary data files
+- Any files created for debugging that are not part of the permanent codebase
+
+### Rules:
+1. **NEVER** create temporary troubleshooting files in the project root
+2. **NEVER** create temporary files in permanent directories (like `scripts/`, `tests/`, etc.) unless they are permanent additions
+3. **ALWAYS** use `temp/` for any file that is:
+   - Created to debug an issue
+   - A one-time test script
+   - Temporary output or data
+   - Not intended to be committed to git
+
+### Examples:
+- ✅ `temp/debug_cors_issue.py` - Correct
+- ✅ `temp/test_api_response.json` - Correct
+- ✅ `temp/troubleshoot_deployment.md` - Correct
+- ❌ `debug_cors_issue.py` (in root) - Wrong
+- ❌ `scripts/test_temp.sh` - Wrong (unless it's permanent)
+
+### Note:
+The `temp/` directory is excluded from git (in `.gitignore`), so files placed there will not be committed or pushed to the repository.
+
