@@ -57,6 +57,10 @@ app_backup_original.py
 *.tmp
 *.temp
 
+# Troubleshooting and temporary files (not tracked by git)
+temp/
+troubleshooting/
+
 # Local testing
 verify_embeddings.py
 
