@@ -69,6 +69,7 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=[
         "https://lawscoutai.com",                    # ✅ Cloudflare-proxied domain (REQUIRED - users access this)
+        "https://www.lawscoutai.com",                # ✅ Cloudflare-proxied domain with www (REQUIRED)
         "https://lawscout-frontend-latest.onrender.com",  # Render frontend origin (direct access)
         "https://lawscout-backend-latest.onrender.com",   # Backend origin (for API docs)
         "https://beta.lawscoutai.com",               # Beta domain (if used)

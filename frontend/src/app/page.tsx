@@ -11,7 +11,7 @@ const apiClient = axios.create({
   headers: {
     'Content-Type': 'application/json',
     'Accept': 'application/json',
-    'Accept-Encoding': 'gzip, deflate, br', // Support compression
+    // Note: Accept-Encoding is a forbidden header - browsers handle compression automatically
   },
   // Enable HTTP keep-alive (reuse connections)
   httpAgent: typeof window === 'undefined' ? undefined : undefined, // Browser handles this automatically
