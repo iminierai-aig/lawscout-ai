@@ -9,19 +9,42 @@ This indicates Cloudflare is blocking or modifying API requests from the proxied
 
 ## Root Cause
 
-When users access `lawscoutai.com`:
-1. Browser makes request to `lawscoutai.com` (Cloudflare edge)
-2. Frontend JavaScript tries to call backend at `https://lawscout-backend-latest.onrender.com`
-3. **Cloudflare may be blocking this cross-origin request** or modifying headers
-4. CORS preflight (OPTIONS) might be failing
+**✅ CONFIRMED:** Backend and CORS are working correctly (curl test with `Origin: https://lawscoutai.com` succeeds).
 
-## Solution 1: Cloudflare Page Rule for API Requests (Recommended)
+**🔴 THE REAL ISSUE:** Cloudflare is blocking or modifying **browser JavaScript requests** (fetch/axios), even though direct HTTP requests work.
+
+When users access `lawscoutai.com`:
+1. Browser loads frontend from `lawscoutai.com` (Cloudflare edge)
+2. Frontend JavaScript tries to call backend at `https://lawscout-backend-latest.onrender.com`
+3. **Cloudflare's security layer blocks/modifies this cross-origin JavaScript request**
+4. CORS preflight (OPTIONS) might be failing or being modified by Cloudflare
+5. Browser shows "Network error" even though backend is accessible
+
+## Solution 1: Cloudflare Security Settings (Quick Fix - Try This First!)
+
+**This is the most likely fix:**
+
+1. **Go to Cloudflare Dashboard → Security → Settings**
+2. **Set "Security Level" to "Medium"** (or "Low" temporarily to test)
+3. **Go to Security → WAF**
+4. **Check "Security Events"** - look for blocked requests from `lawscoutai.com`
+5. **If you see blocked requests, create a WAF exception rule:**
+   - Rule name: "Allow API requests from lawscoutai.com"
+   - Expression: `(http.request.uri.path contains "/api/") and (http.host eq "lawscoutai.com")`
+   - Action: Skip (bypass WAF)
+
+**Why this works:**
+- Cloudflare's default security level might be too strict
+- WAF might be blocking cross-origin API requests
+- Lowering security level or adding exception allows requests through
+
+## Solution 2: Cloudflare Page Rule for API Requests (If Solution 1 Doesn't Work)
 
 Create a Page Rule in Cloudflare to allow API requests:
 
 **Rule: Allow API Requests**
 ```
-URL Pattern: lawscoutai.com/api/*
+URL Pattern: *lawscoutai.com/api/*
 Settings:
   - Cache Level: Bypass
   - Security Level: Medium (or Low if needed)
