@@ -528,7 +528,7 @@ Content: ${source.full_text || source.snippet}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
               <div>
                 <p className="text-xs text-gray-500 mb-2 font-light">Documents Searched</p>
-                <p className="text-2xl font-serif-heading text-white">235,843</p>
+                <p className="text-2xl font-serif-heading text-white">276,970</p>
               </div>
               <div>
                 <p className="text-xs text-gray-500 mb-2 font-light">Relevant Sources</p>

@@ -250,7 +250,7 @@ export default function Sidebar({
             </div>
             <div>
               <p className="text-xs text-gray-600 mb-1 font-light">Chunks</p>
-              <p className="text-lg font-serif-heading text-white">235,843</p>
+              <p className="text-lg font-serif-heading text-white">276,970</p>
             </div>
             <div>
               <p className="text-xs text-gray-600 mb-1 font-light">Courts</p>
