@@ -1,0 +1,62 @@
+# Python
+__pycache__/
+*$py.class
+*.so
+.Python
+*.egg-info/
+dist/
+build/
+
+# Virtual environments
+venv/
+.venv/
+env/
+ENV/
+# Data files (large - not needed in image)
+data/
+*.csv
+*.parquet
+*.json
+*.jsonl
+
+# Tests (not needed in production)
+tests/
+test_*.py
+*_test.py
+
+# Development files
+.git/
+.gitignore
+.env
+.env.*
+*.md
+README*
+Dockerfile
+.dockerignore
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
+# Temporary files
+*.tmp
+*.temp
+*.bak
+
+# Data collection scripts (not needed in production)
+data_collection/
+vector_db/
+
+# Documentation
+docs/
+*.md
