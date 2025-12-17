@@ -128,9 +128,10 @@ export default function Home() {
     localStorage.removeItem('lawscout_query_history')
   }
 
-  const handleSearch = async (e: React.FormEvent) => {
+  const handleSearch = async (e: React.FormEvent, searchQuery?: string) => {
     e.preventDefault()
-    if (!query.trim()) return
+    const queryToSearch = searchQuery || query
+    if (!queryToSearch.trim()) return
 
     // Check search limit if user is authenticated
     if (user && token) {
@@ -155,7 +156,7 @@ export default function Home() {
     try {
       // Use optimized axios instance with connection pooling
       const response = await apiClient.post<SearchResponse>(`${apiUrl}/api/v1/search`, {
-        query: query,
+        query: queryToSearch,
         collection: collection,
         limit: limit,
         use_hybrid: useHybrid,
@@ -163,7 +164,7 @@ export default function Home() {
         extract_citations: extractCitations
       })
       
-      saveToHistory(query)
+      saveToHistory(queryToSearch)
       setAnswer(response.data.answer || 'No answer generated')
       
       const mappedResults = (response.data.sources || []).map((source: any, idx: number) => ({
@@ -192,7 +193,7 @@ export default function Home() {
       // Track search if user is authenticated
       if (user && token) {
         try {
-          await trackSearch(token, query, collection, mappedResults.length)
+          await trackSearch(token, queryToSearch, collection, mappedResults.length)
           await refreshUser() // Refresh user data to update search count
         } catch (err) {
           console.error('Failed to track search:', err)
@@ -226,8 +227,13 @@ export default function Home() {
     }
   }
 
-  const handleExampleClick = (exampleQuery: string) => {
+  const handleExampleClick = async (exampleQuery: string) => {
     setQuery(exampleQuery)
+    // Auto-trigger search with the example query
+    const syntheticEvent = {
+      preventDefault: () => {},
+    } as React.FormEvent
+    handleSearch(syntheticEvent, exampleQuery)
   }
 
   const handleHistoryClick = (histQuery: string) => {
