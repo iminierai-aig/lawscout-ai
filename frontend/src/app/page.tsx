@@ -3,6 +3,10 @@
 import { useState, useEffect } from 'react'
 import axios from 'axios'
 import Sidebar from '@/components/Sidebar'
+import { useAuth } from '@/contexts/AuthContext'
+import { trackSearch } from '@/lib/api'
+import UpgradeBanner from '@/components/UpgradeBanner'
+import AuthStatus from '@/components/AuthStatus'
 
 // Optimized axios instance with connection pooling and keep-alive
 // This reduces connection overhead and improves performance
@@ -60,6 +64,7 @@ interface SearchResponse {
 }
 
 export default function Home() {
+  const { user, token, checkLimit, refreshUser } = useAuth()
   const [query, setQuery] = useState('')
   const [answer, setAnswer] = useState('')
   const [results, setResults] = useState<SearchResult[]>([])
@@ -82,7 +87,7 @@ export default function Home() {
 
   // Get API URL - Next.js bakes NEXT_PUBLIC_* vars at build time
   // For production, this should be set as build arg in Dockerfile
-  const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
+  const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://api.lawscoutai.com'
   
   // Debug: Log the API URL being used (only in browser console)
   useEffect(() => {
@@ -127,13 +132,27 @@ export default function Home() {
     e.preventDefault()
     if (!query.trim()) return
 
+    // Check search limit if user is authenticated
+    if (user && token) {
+      try {
+        const limit = await checkLimit()
+        if (!limit.can_search) {
+          setError(limit.message)
+          return
+        }
+      } catch (err: any) {
+        setError('Unable to verify search limit. Please try again.')
+        return
+      }
+    }
+
     setLoading(true)
     setError('')
     setAnswer('')
     setResults([])
     const startTime = Date.now()
     
-      try {
+    try {
       // Use optimized axios instance with connection pooling
       const response = await apiClient.post<SearchResponse>(`${apiUrl}/api/v1/search`, {
         query: query,
@@ -168,6 +187,17 @@ export default function Home() {
       
       if (mappedResults.length > 0) {
         setExpandedSources({ 0: true })
+      }
+
+      // Track search if user is authenticated
+      if (user && token) {
+        try {
+          await trackSearch(token, query, collection, mappedResults.length)
+          await refreshUser() // Refresh user data to update search count
+        } catch (err) {
+          console.error('Failed to track search:', err)
+          // Don't show error to user - search was successful
+        }
       }
     } catch (err: any) {
       // Enhanced error logging for debugging
@@ -303,12 +333,16 @@ Content: ${source.full_text || source.snippet}
                 </button>
                 <h1 className="text-2xl font-serif-heading text-white">LawScout AI</h1>
               </div>
+              <AuthStatus />
             </div>
           </div>
         </nav>
 
         {/* Main Content - Harvey.ai style */}
         <main className="flex-1 max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-16 w-full">
+        {/* Upgrade Banner */}
+        <UpgradeBanner />
+        
         {/* Hero Section */}
         <div className="text-center mb-16">
           <h1 className="text-6xl md:text-7xl font-serif-heading text-white mb-6 leading-tight">

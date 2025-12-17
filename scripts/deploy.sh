@@ -74,7 +74,7 @@ docker rmi lawscout-frontend:$VERSION 2>/dev/null || true
 
 echo "   Building: $REGISTRY/$ORG/lawscout-ai-frontend:$VERSION"
 # Get backend URL from environment or use default
-BACKEND_URL="${BACKEND_URL:-https://lawscout-backend-latest.onrender.com}"
+BACKEND_URL="${BACKEND_URL:-https://api.lawscoutai.com}"
 echo "   Using backend URL: $BACKEND_URL"
 docker build \
     --build-arg NEXT_PUBLIC_API_URL=$BACKEND_URL \

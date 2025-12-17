@@ -1,9 +1,11 @@
 # Multi-stage build for optimization
 # Using python:3.11 (full Debian) for better ML library compatibility
 # Alternative: python:3.11-slim (smaller but may need more system libs)
-FROM python:3.11 as builder
+FROM python:3.11 AS builder
 
 WORKDIR /app
+
+RUN mkdir -p /app/data && chmod 775 /app/data
 
 # Install build dependencies (minimal but complete)
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -44,6 +46,7 @@ ENV PATH=/root/.local/bin:$PATH
 COPY api/ ./api/
 COPY rag_system/ ./rag_system/
 COPY main.py .
+COPY auth/ ./auth/
 
 # Create cache directory for models (downloaded at runtime, not in image)
 RUN mkdir -p /root/.cache/huggingface && \

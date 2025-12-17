@@ -119,3 +119,6 @@ echo "   After deployment, check browser console (F12) for:"
 echo "   '🔍 Frontend API URL: $BACKEND_URL'"
 echo ""
 
+
+
+
