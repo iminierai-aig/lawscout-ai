@@ -621,42 +621,15 @@ Content: ${source.full_text || source.snippet}
           </div>
         )}
 
-        {/* Empty State */}
-        {!loading && results.length === 0 && !answer && !error && (
+        {/* Empty State - Only show for authenticated users */}
+        {!loading && results.length === 0 && !answer && !error && user && (
           <div className="text-center py-20">
-            {user ? (
-              <>
-                <h3 className="text-2xl font-serif-heading text-white mb-3">
-                  Ready to Search
-                </h3>
-                <p className="text-gray-500 font-light">
-                  Enter a legal question above or click one of the example queries
-                </p>
-              </>
-            ) : (
-              <>
-                <h3 className="text-2xl font-serif-heading text-white mb-3">
-                  Sign In to Get Started
-                </h3>
-                <p className="text-gray-500 font-light mb-6">
-                  Create a free account to access our legal research database
-                </p>
-                <div className="flex gap-4 justify-center">
-                  <a
-                    href="/register"
-                    className="px-6 py-2 bg-white text-harvey-dark font-medium rounded-md hover:bg-gray-100 transition-colors"
-                  >
-                    Sign Up Free
-                  </a>
-                  <a
-                    href="/login"
-                    className="px-6 py-2 border border-gray-700 text-white font-medium rounded-md hover:border-gray-600 transition-colors"
-                  >
-                    Sign In
-                  </a>
-                </div>
-              </>
-            )}
+            <h3 className="text-2xl font-serif-heading text-white mb-3">
+              Ready to Search
+            </h3>
+            <p className="text-gray-500 font-light">
+              Enter a legal question above or click one of the example queries
+            </p>
           </div>
         )}
 
