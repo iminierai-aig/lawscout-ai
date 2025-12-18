@@ -36,9 +36,9 @@ COPY --from=builder /app/.next/static ./.next/static
 # Expose port
 EXPOSE 3000
 
-# Health check
+# Health check - verifies the server responds with HTTP 200
 HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
-  CMD node -e "require('http').get('http://localhost:3000', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"
+  CMD node -e "const http = require('http'); const options = {hostname: '127.0.0.1', port: 3000, path: '/', method: 'GET', timeout: 5000}; const req = http.request(options, (res) => {process.exit(res.statusCode === 200 ? 0 : 1)}); req.on('error', () => process.exit(1)); req.on('timeout', () => {req.destroy(); process.exit(1)}); req.end()"
 
 # Start the server
 CMD ["node", "server.js"]
