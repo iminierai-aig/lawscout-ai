@@ -179,21 +179,74 @@ async def upgrade_user_to_pro(email: str, db: Session = Depends(get_db)):
 
 @router.get("/admin/stats")
 async def get_platform_stats(db: Session = Depends(get_db)):
+    from sqlalchemy import func, and_
+    from datetime import datetime, timedelta
+    
+    # Basic counts
     total_users = db.query(models.User).count()
     pro_users = db.query(models.User).filter(models.User.tier == "pro").count()
+    free_users = total_users - pro_users
     total_searches = db.query(models.SearchHistory).count()
+    
+    # Users at free tier limit
     users_at_limit = db.query(models.User).filter(
-        models.User.tier == "free",
-        models.User.search_count >= security.FREE_TIER_LIMIT
+        and_(
+            models.User.tier == "free",
+            models.User.search_count >= security.FREE_TIER_LIMIT
+        )
+    ).count()
+    
+    # OAuth statistics
+    oauth_users = db.query(models.User).filter(models.User.oauth_provider.isnot(None)).count()
+    email_users = db.query(models.User).filter(models.User.oauth_provider.is_(None)).count()
+    
+    # Users by OAuth provider
+    google_users = db.query(models.User).filter(models.User.oauth_provider == "google").count()
+    github_users = db.query(models.User).filter(models.User.oauth_provider == "github").count()
+    
+    # Active users (logged in within last 30 days)
+    thirty_days_ago = datetime.utcnow() - timedelta(days=30)
+    active_users = db.query(models.User).filter(
+        models.User.last_login >= thirty_days_ago
+    ).count()
+    
+    # Recent sign-ups (last 7 days)
+    seven_days_ago = datetime.utcnow() - timedelta(days=7)
+    recent_signups = db.query(models.User).filter(
+        models.User.created_at >= seven_days_ago
+    ).count()
+    
+    # Recent sign-ups by method
+    recent_oauth = db.query(models.User).filter(
+        and_(
+            models.User.created_at >= seven_days_ago,
+            models.User.oauth_provider.isnot(None)
+        )
+    ).count()
+    recent_email = db.query(models.User).filter(
+        and_(
+            models.User.created_at >= seven_days_ago,
+            models.User.oauth_provider.is_(None)
+        )
     ).count()
     
     return {
         "total_users": total_users,
-        "free_users": total_users - pro_users,
+        "free_users": free_users,
         "pro_users": pro_users,
         "total_searches": total_searches,
         "users_at_limit": users_at_limit,
-        "conversion_opportunity": users_at_limit
+        "conversion_opportunity": users_at_limit,
+        # Sign-in method statistics
+        "oauth_users": oauth_users,
+        "email_users": email_users,
+        "google_users": google_users,
+        "github_users": github_users,
+        # Activity statistics
+        "active_users_30d": active_users,
+        "recent_signups_7d": recent_signups,
+        "recent_oauth_signups_7d": recent_oauth,
+        "recent_email_signups_7d": recent_email
     }
 
 @router.get("/health")
