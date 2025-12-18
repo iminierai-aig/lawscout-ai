@@ -1,10 +1,21 @@
 """FastAPI routes for authentication"""
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Request
 from fastapi.security import OAuth2PasswordRequestForm
+from fastapi.responses import RedirectResponse, JSONResponse
 from sqlalchemy.orm import Session
 from datetime import datetime
+from starlette.middleware.sessions import SessionMiddleware
 from . import models, schemas, security
 from .database import get_db
+import os
+
+# Optional OAuth import (only if oauth.py exists)
+try:
+    from . import oauth
+    OAUTH_AVAILABLE = True
+except ImportError:
+    OAUTH_AVAILABLE = False
+    oauth = None
 
 router = APIRouter(prefix="/api/auth", tags=["authentication"])
 
@@ -76,7 +87,8 @@ async def login(
         searches_remaining=searches_remaining,
         is_active=user.is_active,
         created_at=user.created_at,
-        last_login=user.last_login
+        last_login=user.last_login,
+        profile_picture=user.profile_picture
     )
     
     return schemas.Token(
@@ -98,7 +110,8 @@ async def read_users_me(current_user: models.User = Depends(security.get_current
         searches_remaining=searches_remaining,
         is_active=current_user.is_active,
         created_at=current_user.created_at,
-        last_login=current_user.last_login
+        last_login=current_user.last_login,
+        profile_picture=current_user.profile_picture
     )
 
 @router.get("/search/check-limit", response_model=schemas.SearchLimitResponse)
@@ -187,3 +200,38 @@ async def get_platform_stats(db: Session = Depends(get_db)):
 async def health_check():
     """Health check endpoint for auth service"""
     return {"status": "healthy", "service": "auth"}
+
+# OAuth Routes (only if OAuth is available)
+if OAUTH_AVAILABLE:
+    @router.get("/google/login", name="google_login")
+    async def google_login_route(request: Request):
+        """Initiate Google OAuth login"""
+        try:
+            return await oauth.google_login(request)
+        except Exception as e:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"OAuth login failed: {str(e)}"
+            )
+
+    @router.get("/google/callback", name="google_callback")
+    async def google_callback_route(request: Request, db: Session = Depends(get_db)):
+        """Handle Google OAuth callback"""
+        try:
+            result = await oauth.google_callback(request, db)
+            
+            # Redirect to frontend with token in URL (frontend will extract it)
+            # In production, you might want to use a more secure method like httpOnly cookies
+            frontend_url = os.getenv("FRONTEND_URL", "https://lawscoutai.com")
+            token = result["access_token"]
+            
+            # Redirect to frontend with token
+            return RedirectResponse(
+                url=f"{frontend_url}/auth/callback?token={token}&provider=google"
+            )
+        except Exception as e:
+            # Redirect to frontend with error
+            frontend_url = os.getenv("FRONTEND_URL", "https://lawscoutai.com")
+            return RedirectResponse(
+                url=f"{frontend_url}/auth/callback?error={str(e)}"
+            )
