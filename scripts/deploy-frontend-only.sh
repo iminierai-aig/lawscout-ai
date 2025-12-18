@@ -37,6 +37,7 @@ BACKEND_URL="${BACKEND_URL:-https://api.lawscoutai.com}"
 echo "   Backend URL: $BACKEND_URL"
 
 docker build \
+    --no-cache \
     --build-arg NEXT_PUBLIC_API_URL=$BACKEND_URL \
     -t $REGISTRY/$ORG/lawscout-ai-frontend:$VERSION .
 
