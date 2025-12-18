@@ -5,6 +5,9 @@ from sqlalchemy.orm import Session
 from . import models, security
 import os
 import secrets
+import logging
+
+logger = logging.getLogger(__name__)
 
 # OAuth configuration
 GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID")
@@ -38,8 +41,18 @@ async def google_login(request: Request):
     state = secrets.token_urlsafe(32)
     request.session['oauth_state'] = state
     
-    # Build redirect URI
-    redirect_uri = str(request.url_for('google_callback'))
+    # Build redirect URI - use explicit backend URL if set, otherwise use request URL
+    # This fixes issues when behind a proxy/load balancer
+    backend_url = os.getenv("BACKEND_URL", os.getenv("API_URL", ""))
+    if backend_url:
+        # Remove trailing slash if present
+        backend_url = backend_url.rstrip('/')
+        redirect_uri = f"{backend_url}/api/auth/google/callback"
+    else:
+        # Fallback to request URL (may not work behind proxy)
+        redirect_uri = str(request.url_for('google_callback'))
+    
+    logger.info(f"OAuth redirect URI: {redirect_uri}")
     return await oauth.google.authorize_redirect(request, redirect_uri, state=state)
 
 async def google_callback(request: Request, db: Session):
