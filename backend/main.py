@@ -8,6 +8,7 @@ from pathlib import Path
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
+from starlette.middleware.sessions import SessionMiddleware
 from contextlib import asynccontextmanager
 from dotenv import load_dotenv
 from auth import router as auth_router, init_db
@@ -77,6 +78,11 @@ app = FastAPI(
     version="2.1.1",
     lifespan=lifespan
 )
+
+# Session middleware for OAuth (must be before other middleware)
+import os
+SESSION_SECRET = os.getenv("SESSION_SECRET", os.getenv("JWT_SECRET_KEY", "CHANGE_THIS_IN_PRODUCTION"))
+app.add_middleware(SessionMiddleware, secret_key=SESSION_SECRET)
 
 # Response compression - reduces network transfer time significantly
 # This works great with Cloudflare CDN which also compresses responses

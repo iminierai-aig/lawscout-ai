@@ -19,6 +19,7 @@ export interface User {
   is_active: boolean;
   created_at: string;
   last_login: string | null;
+  profile_picture?: string | null;
 }
 
 export interface TokenResponse {

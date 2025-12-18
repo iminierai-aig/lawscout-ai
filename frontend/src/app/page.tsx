@@ -133,18 +133,22 @@ export default function Home() {
     const queryToSearch = searchQuery || query
     if (!queryToSearch.trim()) return
 
-    // Check search limit if user is authenticated
-    if (user && token) {
-      try {
-        const limit = await checkLimit()
-        if (!limit.can_search) {
-          setError(limit.message)
-          return
-        }
-      } catch (err: any) {
-        setError('Unable to verify search limit. Please try again.')
+    // Require authentication before searching
+    if (!user || !token) {
+      setError('Please sign in or create an account to search. Sign up is free!')
+      return
+    }
+
+    // Check search limit
+    try {
+      const limit = await checkLimit()
+      if (!limit.can_search) {
+        setError(limit.message)
         return
       }
+    } catch (err: any) {
+      setError('Unable to verify search limit. Please try again.')
+      return
     }
 
     setLoading(true)
@@ -228,6 +232,12 @@ export default function Home() {
   }
 
   const handleExampleClick = async (exampleQuery: string) => {
+    // Require authentication
+    if (!user || !token) {
+      setError('Please sign in or create an account to search. Sign up is free!')
+      return
+    }
+    
     setQuery(exampleQuery)
     // Auto-trigger search with the example query
     const syntheticEvent = {
@@ -367,13 +377,13 @@ Content: ${source.full_text || source.snippet}
                 type="text"
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
-                placeholder="Ask a legal question"
+                placeholder={user ? "Ask a legal question" : "Sign in to search legal documents"}
                 className="flex-1 px-6 py-4 text-base border border-gray-700 rounded-md bg-harvey-dark text-white placeholder-gray-500 focus:border-white focus:outline-none transition-colors"
-                disabled={loading}
+                disabled={loading || !user}
               />
               <button
                 type="submit"
-                disabled={loading || !query.trim()}
+                disabled={loading || !query.trim() || !user}
                 className="px-10 py-4 bg-white text-harvey-dark font-medium rounded-md hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
               >
                 {loading ? (
@@ -392,20 +402,41 @@ Content: ${source.full_text || source.snippet}
           </form>
 
           {/* Example Queries - Harvey.ai style */}
-          <div className="mt-8">
-            <p className="text-sm text-gray-500 mb-4 text-center">Example queries:</p>
-            <div className="flex flex-wrap gap-3 justify-center">
-              {exampleQueries.slice(0, 5).map((example, idx) => (
-                <button
-                  key={idx}
-                  onClick={() => handleExampleClick(example)}
-                  className="px-4 py-2 text-sm text-gray-400 hover:text-white transition-colors border border-gray-800 hover:border-gray-700 rounded-md"
-                >
-                  {example}
-                </button>
-              ))}
+          {user ? (
+            <div className="mt-8">
+              <p className="text-sm text-gray-500 mb-4 text-center">Example queries:</p>
+              <div className="flex flex-wrap gap-3 justify-center">
+                {exampleQueries.slice(0, 5).map((example, idx) => (
+                  <button
+                    key={idx}
+                    onClick={() => handleExampleClick(example)}
+                    className="px-4 py-2 text-sm text-gray-400 hover:text-white transition-colors border border-gray-800 hover:border-gray-700 rounded-md"
+                  >
+                    {example}
+                  </button>
+                ))}
+              </div>
             </div>
-          </div>
+          ) : (
+            <div className="mt-8 p-6 bg-harvey-dark border border-gray-800 rounded-md text-center">
+              <p className="text-white text-lg mb-2">🔒 Sign in required to search</p>
+              <p className="text-gray-400 text-sm mb-4">Create a free account to access our legal research database</p>
+              <div className="flex gap-4 justify-center">
+                <a
+                  href="/register"
+                  className="px-6 py-2 bg-white text-harvey-dark font-medium rounded-md hover:bg-gray-100 transition-colors"
+                >
+                  Sign Up Free
+                </a>
+                <a
+                  href="/login"
+                  className="px-6 py-2 border border-gray-700 text-white font-medium rounded-md hover:border-gray-600 transition-colors"
+                >
+                  Sign In
+                </a>
+              </div>
+            </div>
+          )}
 
           {/* Error Display */}
           {error && (
@@ -593,12 +624,39 @@ Content: ${source.full_text || source.snippet}
         {/* Empty State */}
         {!loading && results.length === 0 && !answer && !error && (
           <div className="text-center py-20">
-            <h3 className="text-2xl font-serif-heading text-white mb-3">
-              Ready to Search
-            </h3>
-            <p className="text-gray-500 font-light">
-              Enter a legal question above or click one of the example queries
-            </p>
+            {user ? (
+              <>
+                <h3 className="text-2xl font-serif-heading text-white mb-3">
+                  Ready to Search
+                </h3>
+                <p className="text-gray-500 font-light">
+                  Enter a legal question above or click one of the example queries
+                </p>
+              </>
+            ) : (
+              <>
+                <h3 className="text-2xl font-serif-heading text-white mb-3">
+                  Sign In to Get Started
+                </h3>
+                <p className="text-gray-500 font-light mb-6">
+                  Create a free account to access our legal research database
+                </p>
+                <div className="flex gap-4 justify-center">
+                  <a
+                    href="/register"
+                    className="px-6 py-2 bg-white text-harvey-dark font-medium rounded-md hover:bg-gray-100 transition-colors"
+                  >
+                    Sign Up Free
+                  </a>
+                  <a
+                    href="/login"
+                    className="px-6 py-2 border border-gray-700 text-white font-medium rounded-md hover:border-gray-600 transition-colors"
+                  >
+                    Sign In
+                  </a>
+                </div>
+              </>
+            )}
           </div>
         )}
 
