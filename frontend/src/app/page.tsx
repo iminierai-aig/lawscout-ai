@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import axios from 'axios'
+import Link from 'next/link'
 import Sidebar from '@/components/Sidebar'
 import { useAuth } from '@/contexts/AuthContext'
 import { trackSearch } from '@/lib/api'
@@ -645,9 +646,9 @@ Content: ${source.full_text || source.snippet}
         <footer className="border-t border-gray-800 mt-20 bg-harvey-dark">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
             <div className="flex justify-center space-x-8 text-sm text-gray-500">
-              <a href="#" className="hover:text-white transition-colors font-light">Support</a>
-              <a href="#" className="hover:text-white transition-colors font-light">Terms</a>
-              <a href="#" className="hover:text-white transition-colors font-light">Privacy</a>
+              <Link href="/support" className="hover:text-white transition-colors font-light">Support</Link>
+              <Link href="/terms" className="hover:text-white transition-colors font-light">Terms</Link>
+              <Link href="/privacy" className="hover:text-white transition-colors font-light">Privacy</Link>
               <a href="https://www.courtlistener.com/" target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors font-light">
                 US Courts & Case Law
               </a>
