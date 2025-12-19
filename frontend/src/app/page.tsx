@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import axios from 'axios'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import Sidebar from '@/components/Sidebar'
 import { useAuth } from '@/contexts/AuthContext'
 import { trackSearch } from '@/lib/api'
@@ -66,6 +67,7 @@ interface SearchResponse {
 
 export default function Home() {
   const { user, token, checkLimit, refreshUser } = useAuth()
+  const router = useRouter()
   const [query, setQuery] = useState('')
   const [answer, setAnswer] = useState('')
   const [results, setResults] = useState<SearchResult[]>([])
@@ -425,18 +427,18 @@ Content: ${source.full_text || source.snippet}
               <p className="text-white text-lg mb-2">🔒 Sign in required to search</p>
               <p className="text-gray-400 text-sm mb-4">Create a free account to access our legal research database</p>
               <div className="flex gap-4 justify-center">
-                <Link
-                  href="/register"
-                  className="px-6 py-2 bg-white text-harvey-dark font-medium rounded-md hover:bg-gray-100 transition-colors"
+                <button
+                  onClick={() => router.push('/register')}
+                  className="px-6 py-2 bg-white text-harvey-dark font-medium rounded-md hover:bg-gray-100 transition-colors cursor-pointer"
                 >
                   Sign Up Free
-                </Link>
-                <Link
-                  href="/login"
-                  className="px-6 py-2 border border-gray-700 text-white font-medium rounded-md hover:border-gray-600 transition-colors"
+                </button>
+                <button
+                  onClick={() => router.push('/login')}
+                  className="px-6 py-2 border border-gray-700 text-white font-medium rounded-md hover:border-gray-600 transition-colors cursor-pointer"
                 >
                   Sign In
-                </Link>
+                </button>
               </div>
             </div>
           )}
