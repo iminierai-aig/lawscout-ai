@@ -5,6 +5,7 @@ import './globals.css'
 import { AuthProvider } from '@/contexts/AuthContext'
 
 export const metadata: Metadata = {
+  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || 'https://lawscoutai.com'),
   title: 'LawScout AI - AI-Powered Legal Research',
   description: 'Master legal concepts and procedures, draft precise documents, and conduct thorough analysis. Free legal research powered by AI.',
   keywords: 'legal research, AI legal assistant, case law, legal documents, legal analysis',
