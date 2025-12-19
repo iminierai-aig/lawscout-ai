@@ -162,9 +162,9 @@ export default function SupportPage() {
               <p className="text-gray-400 text-sm mb-4 font-light">
                 Learn how to use LawScout AI effectively
               </p>
-              <a href="/help" className="text-blue-400 hover:text-blue-300 text-sm font-light transition-colors">
+              <Link href="/" className="text-blue-400 hover:text-blue-300 text-sm font-light transition-colors">
                 View Guide →
-              </a>
+              </Link>
             </div>
           </div>
 
