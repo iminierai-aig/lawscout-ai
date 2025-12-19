@@ -1,11 +1,10 @@
 'use client'
 
-import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 import { useAuth } from '@/contexts/AuthContext'
 
 export default function AuthStatus() {
   const { user, isAuth, logoutUser, loading } = useAuth()
-  const router = useRouter()
 
   if (loading) {
     return (
@@ -18,18 +17,18 @@ export default function AuthStatus() {
   if (!isAuth || !user) {
     return (
       <div className="flex items-center gap-4">
-        <button
-          onClick={() => router.push('/login')}
-          className="px-4 py-2 text-sm text-gray-400 hover:text-white transition-colors cursor-pointer"
+        <Link
+          href="/login"
+          className="px-4 py-2 text-sm text-gray-400 hover:text-white transition-colors"
         >
           Sign In
-        </button>
-        <button
-          onClick={() => router.push('/register')}
-          className="px-4 py-2 text-sm bg-white text-harvey-dark rounded-md hover:bg-gray-100 transition-colors cursor-pointer"
+        </Link>
+        <Link
+          href="/register"
+          className="px-4 py-2 text-sm bg-white text-harvey-dark rounded-md hover:bg-gray-100 transition-colors"
         >
           Sign Up
-        </button>
+        </Link>
       </div>
     )
   }
