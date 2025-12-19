@@ -425,18 +425,18 @@ Content: ${source.full_text || source.snippet}
               <p className="text-white text-lg mb-2">🔒 Sign in required to search</p>
               <p className="text-gray-400 text-sm mb-4">Create a free account to access our legal research database</p>
               <div className="flex gap-4 justify-center">
-                <Link
+                <a
                   href="/register"
-                  className="px-6 py-2 bg-white text-harvey-dark font-medium rounded-md hover:bg-gray-100 transition-colors inline-block text-center"
+                  className="px-6 py-2 bg-white text-harvey-dark font-medium rounded-md hover:bg-gray-100 transition-colors"
                 >
                   Sign Up Free
-                </Link>
-                <Link
+                </a>
+                <a
                   href="/login"
-                  className="px-6 py-2 border border-gray-700 text-white font-medium rounded-md hover:border-gray-600 transition-colors inline-block text-center"
+                  className="px-6 py-2 border border-gray-700 text-white font-medium rounded-md hover:border-gray-600 transition-colors"
                 >
                   Sign In
-                </Link>
+                </a>
               </div>
             </div>
           )}
