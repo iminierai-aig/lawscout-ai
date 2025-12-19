@@ -502,22 +502,34 @@ Content: ${source.full_text || source.snippet}
                           )}
                         </h3>
                         <div className="flex flex-wrap gap-4 text-sm text-gray-500 font-light">
-                          <span>Score: {(result.relevance_score * 100).toFixed(1)}%</span>
-                          {result.url ? (
-                            <a
-                              href={result.url}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="text-gray-400 hover:text-white transition-colors underline"
-                              onClick={(e) => e.stopPropagation()}
-                            >
-                              {result.citation}
-                            </a>
+                          {result.relevance_score > 0 ? (
+                            <span>Score: {(result.relevance_score * 100).toFixed(1)}%</span>
                           ) : (
-                            <span>{result.citation}</span>
+                            <span className="text-gray-600">Score: Low relevance</span>
                           )}
-                          <span>{result.court}</span>
-                          <span>{result.date}</span>
+                          {result.citation && result.citation !== 'N/A' ? (
+                            result.url ? (
+                              <a
+                                href={result.url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-gray-400 hover:text-white transition-colors underline"
+                                onClick={(e) => e.stopPropagation()}
+                              >
+                                {result.citation}
+                              </a>
+                            ) : (
+                              <span>{result.citation}</span>
+                            )
+                          ) : (
+                            <span className="text-gray-600">No citation</span>
+                          )}
+                          {result.court && result.court !== 'N/A' && (
+                            <span>{result.court}</span>
+                          )}
+                          {result.date && result.date !== 'N/A' && (
+                            <span>{result.date}</span>
+                          )}
                         </div>
                       </div>
                       <button
@@ -527,19 +539,25 @@ Content: ${source.full_text || source.snippet}
                         {expandedSources[idx] ? '−' : '+'}
                       </button>
                     </div>
-                    {result.url && (
-                      <div className="mt-3">
+                    <div className="mt-3 flex items-center gap-4">
+                      {result.url && (
                         <a
                           href={result.url}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="inline-flex items-center text-sm text-white hover:text-gray-300 font-normal underline transition-colors"
+                          className="inline-flex items-center gap-2 text-sm text-white hover:text-gray-300 font-normal underline transition-colors"
                           onClick={(e) => e.stopPropagation()}
                         >
-                          View Full Source →
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                          </svg>
+                          {result.url.includes('.pdf') || result.url.includes('pdf') ? 'View PDF' : 'View Full Source'}
                         </a>
-                      </div>
-                    )}
+                      )}
+                      {result.citation && result.citation !== 'N/A' && !result.url && (
+                        <span className="text-sm text-gray-500 font-light">Citation: {result.citation}</span>
+                      )}
+                    </div>
                   </div>
 
                   {expandedSources[idx] && (
@@ -564,21 +582,27 @@ Content: ${source.full_text || source.snippet}
                       )}
                       {result.citations && result.citations.length > 0 && (
                         <div className="mt-6 pt-6 border-t border-gray-800">
-                          <p className="text-xs text-gray-500 mb-3 font-light">Citations Found:</p>
+                          <p className="text-xs text-gray-500 mb-3 font-light uppercase tracking-wide">Citations Found in Text:</p>
                           <div className="space-y-2">
                             {result.citations.map((citation: any, cIdx: number) => (
-                              <div key={cIdx}>
+                              <div key={cIdx} className="flex items-center gap-2">
                                 {citation.link ? (
                                   <a
                                     href={citation.link}
                                     target="_blank"
                                     rel="noopener noreferrer"
-                                    className="text-sm text-white hover:text-gray-300 underline transition-colors"
+                                    className="inline-flex items-center gap-2 text-sm text-blue-400 hover:text-blue-300 underline transition-colors"
                                   >
+                                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                                    </svg>
                                     {citation.text}
                                   </a>
                                 ) : (
                                   <span className="text-sm text-gray-400">{citation.text}</span>
+                                )}
+                                {citation.type && (
+                                  <span className="text-xs text-gray-600 font-light">({citation.type})</span>
                                 )}
                               </div>
                             ))}

@@ -12,6 +12,7 @@ from functools import lru_cache
 import hashlib
 import json
 import time
+import re
 from datetime import datetime, timedelta
 
 logger = logging.getLogger(__name__)
@@ -38,22 +39,96 @@ def _create_cache_key(request: SearchRequest) -> str:
     cache_str = json.dumps(cache_data, sort_keys=True)
     return hashlib.md5(cache_str.encode()).hexdigest()
 
+def _construct_courtlistener_url(citation: str) -> str:
+    """
+    Construct CourtListener URL from citation string
+    Format: https://www.courtlistener.com/c/{reporter}/{volume}/{page}/
+    """
+    if not citation:
+        return None
+    
+    # Try to parse common citation formats
+    # Example: "123 U.S. 456" or "456 F.3d 789"
+    patterns = [
+        (r'(\d+)\s+U\.S\.(?:\s+App\.)?\s+(\d+)', 'us'),
+        (r'(\d+)\s+F\.\s*(?:2d|3d|4th)?\s+(\d+)', 'f'),
+        (r'(\d+)\s+S\.\s*Ct\.\s+(\d+)', 'sct'),
+        (r'(\d+)\s+F\.\s*Supp\.\s*(?:2d|3d)?\s+(\d+)', 'f-supp'),
+    ]
+    
+    for pattern, reporter in patterns:
+        match = re.search(pattern, citation, re.IGNORECASE)
+        if match:
+            volume = match.group(1)
+            page = match.group(2)
+            return f"https://www.courtlistener.com/c/{reporter}/{volume}/{page}/"
+    
+    return None
+
 def _transform_sources_optimized(sources: list) -> list:
     """Optimized source transformation - minimize dict lookups"""
     sources_list = []
+    MIN_SCORE_THRESHOLD = -0.5  # Filter out results with very negative scores
+    
     for src in sources:
+        raw_score = src.get('score', 0.0)
+        
+        # Filter out results with very poor scores (unless it's the only result)
+        if raw_score < MIN_SCORE_THRESHOLD and len(sources) > 1:
+            continue
+        
+        # Get metadata - it might be nested or at top level
         metadata = src.get('metadata', {})
+        if not isinstance(metadata, dict):
+            metadata = {}
+        
+        # Extract title from multiple possible locations
+        title = (
+            metadata.get('case_name') or 
+            metadata.get('filename') or 
+            metadata.get('title') or
+            src.get('source') or 
+            'Unknown'
+        )
+        
+        # Extract citation from multiple possible fields
+        citation = (
+            metadata.get('citation') or 
+            metadata.get('case_citation') or
+            metadata.get('docket_number') or
+            metadata.get('citation_string')
+        )
+        
+        # Extract URL from multiple possible fields (PDF links, case URLs, etc.)
+        url = (
+            metadata.get('url') or 
+            metadata.get('case_url') or 
+            metadata.get('pdf_url') or 
+            metadata.get('download_url') or
+            metadata.get('resource_uri') or
+            metadata.get('absolute_url')
+        )
+        
+        # If no URL but we have a citation, try to construct CourtListener URL
+        if not url and citation:
+            url = _construct_courtlistener_url(citation)
+        
+        # Normalize score to 0-1 range for display (negative scores become 0)
+        display_score = max(raw_score, 0.0)
+        
         sources_list.append({
             "content": src.get('full_text') or src.get('text', ''),
-            "score": src.get('score', 0.0),
+            "score": display_score,
             "metadata": {
-                "title": src.get('source', 'Unknown'),
+                "title": title,
                 "collection": src.get('collection', 'unknown'),
-                "court": metadata.get('court'),
-                "date": metadata.get('date'),
-                "citation": metadata.get('citation'),
-                "url": metadata.get('url')
-            }
+                "court": metadata.get('court') or metadata.get('court_name') or metadata.get('court_string'),
+                "date": metadata.get('date') or metadata.get('date_filed') or metadata.get('filing_date') or metadata.get('date_created'),
+                "citation": citation,
+                "url": url
+            },
+            # Preserve extracted citations if available
+            "citations": src.get('citations', [])
         })
     return sources_list
 

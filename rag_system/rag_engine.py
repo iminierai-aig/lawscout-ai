@@ -385,13 +385,18 @@ Note: LLM answer generation is temporarily unavailable. Check your Gemini API ke
         if return_sources:
             response['sources'] = []
             for r in results[:5]:
+                # Preserve original metadata from search results
+                original_metadata = r.get('metadata', {})
+                
                 source_dict = {
                     'score': r['score'],
                     'text': r['text'][:200] + '...',
                     'full_text': r['text'],  # Include full text
-                    'source': r.get('metadata', {}).get('case_name') or \
-                              r.get('metadata', {}).get('filename', 'Unknown'),
-                    'collection': r['collection']
+                    'source': original_metadata.get('case_name') or \
+                              original_metadata.get('filename') or \
+                              r.get('source', 'Unknown'),
+                    'collection': r.get('collection', 'unknown'),
+                    'metadata': original_metadata  # Preserve full metadata
                 }
                 
                 # Add search method scores if available
