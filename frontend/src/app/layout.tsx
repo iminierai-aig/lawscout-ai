@@ -5,7 +5,7 @@ import './globals.css'
 import { AuthProvider } from '@/contexts/AuthContext'
 
 export const metadata: Metadata = {
-  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || 'https://lawscoutai.com'),
+  metadataBase: new URL('https://lawscoutai.com'),
   title: 'LawScout AI - AI-Powered Legal Research',
   description: 'Master legal concepts and procedures, draft precise documents, and conduct thorough analysis. Free legal research powered by AI.',
   keywords: 'legal research, AI legal assistant, case law, legal documents, legal analysis',
@@ -52,9 +52,9 @@ export default function RootLayout({
         )}
         <AuthProvider>
           {/* Beta Banner */}
-          <div className="bg-blue-600 text-white text-center py-2 text-sm">
+          <div className="bg-blue-600 text-white text-center py-2 text-sm relative z-10">
             🚀 Beta Testing Phase - Your feedback shapes our product! 
-            <Link href="/support" className="underline ml-2">Report Issues</Link>
+            <Link href="/support" className="underline ml-2 hover:text-blue-100">Report Issues</Link>
           </div>
           
           {children}
