@@ -75,13 +75,13 @@ class QueryHandler:
     
     def preprocess_query(self, query: str) -> str:
         """
-        Preprocess and enhance query
+        Preprocess and enhance query with legal term expansion
         
         Args:
             query: Raw user query
         
         Returns:
-            Processed query
+            Processed query with expanded terms
         """
         # Remove extra whitespace
         query = ' '.join(query.split())
@@ -92,10 +92,39 @@ class QueryHandler:
             'P': 'plaintiff',
             'D': 'defendant',
             'SOL': 'statute of limitations',
+            'MSJ': 'motion for summary judgment',
+            'MTD': 'motion to dismiss',
+            'MTS': 'motion to suppress',
+            'MTC': 'motion to compel',
+            'SJ': 'summary judgment',
+            'DJ': 'declaratory judgment',
+            'PI': 'preliminary injunction',
+            'TRO': 'temporary restraining order',
+            'FRCP': 'federal rules of civil procedure',
+            'FRE': 'federal rules of evidence',
         }
         
         for abbr, full in abbreviations.items():
             query = re.sub(rf'\b{abbr}\b', full, query, flags=re.IGNORECASE)
+        
+        # Expand legal term synonyms (add common alternatives)
+        legal_synonyms = {
+            r'\bmotion to suppress\b': 'motion to suppress exclusionary rule fourth amendment',
+            r'\bconsent search\b': 'consent search warrantless search fourth amendment',
+            r'\bbreach of contract\b': 'breach of contract contract violation',
+            r'\bqualified immunity\b': 'qualified immunity government immunity',
+            r'\bsummary judgment\b': 'summary judgment no genuine issue material fact',
+            r'\bnegligence\b': 'negligence duty breach causation damages',
+            r'\bveil piercing\b': 'veil piercing alter ego corporate veil',
+        }
+        
+        for pattern, expansion in legal_synonyms.items():
+            if re.search(pattern, query, re.IGNORECASE):
+                # Add expansion terms if not already present
+                expansion_terms = expansion.split()
+                for term in expansion_terms:
+                    if term.lower() not in query.lower():
+                        query += f' {term}'
         
         return query
     

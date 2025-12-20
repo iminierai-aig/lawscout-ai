@@ -306,33 +306,86 @@ class LegalRAGEngine:
         
         for i, chunk in enumerate(context[:top_k]):
             text = chunk.get('text', '') or chunk.get('full_text', '')
-            source = (chunk.get('metadata', {}).get('case_name') or 
-                     chunk.get('metadata', {}).get('title') or
-                     chunk.get('metadata', {}).get('filename') or 
+            metadata = chunk.get('metadata', {})
+            
+            # Extract source information
+            source = (metadata.get('case_name') or 
+                     metadata.get('title') or
+                     metadata.get('filename') or 
                      chunk.get('source', 'Unknown'))
+            
+            # Extract URL if available (for clickable links in answer)
+            url = (metadata.get('url') or 
+                  chunk.get('url') or
+                  metadata.get('case_url') or
+                  metadata.get('pdf_url') or
+                  None)
+            
+            # Extract citation if available
+            citation = (metadata.get('citation') or 
+                       chunk.get('citation') or
+                       None)
+            
+            # Build source header with URL if available
+            source_header = f"[Source {i+1}: {source}"
+            if citation:
+                source_header += f" ({citation})"
+            if url:
+                source_header += f" - Link: {url}"
+            source_header += "]"
             
             # Limit each chunk to reasonable size
             chunk_text = text[:2000] if len(text) > 2000 else text
             
             # Check if adding this chunk would exceed limit
-            chunk_entry = f"\n[Source {i+1}: {source}]\n{chunk_text}\n"
+            chunk_entry = f"\n{source_header}\n{chunk_text}\n"
             if len(context_text) + len(chunk_entry) > max_chars:
                 break
             
             context_text += chunk_entry
         
+        # Detect state/jurisdiction in query for better context
+        state_keywords = {
+            'florida': ['florida', 'fl ', 'fl.', 'fla.', 'fla ', '1st dca', '2d dca', '3d dca', '4th dca', '5th dca'],
+            'california': ['california', 'ca ', 'cal.', 'cal '],
+            'new york': ['new york', 'ny ', 'n.y.'],
+            'texas': ['texas', 'tx ', 'tx.'],
+        }
+        detected_state = None
+        query_lower = query.lower()
+        for state, keywords in state_keywords.items():
+            if any(keyword in query_lower for keyword in keywords):
+                detected_state = state.title()
+                break
+        
         # Optimized system prompt (concise = fewer tokens = lower cost)
         system_prompt = "You are a legal research assistant. Provide accurate, concise answers based on the provided legal documents. Cite case names when relevant."
         
+        # Add state-specific instruction if state detected
+        state_instruction = ""
+        if detected_state:
+            state_instruction = f"\n\nIMPORTANT: The user is asking about {detected_state} law. Prioritize and emphasize {detected_state}-specific cases, courts, and legal principles. If the provided documents don't contain {detected_state}-specific information, clearly state that upfront and explain what general principles are available instead."
+        
+        # Enhanced instructions for better organization and truthfulness
+        quality_instructions = """
+        
+CRITICAL REQUIREMENTS:
+1. ORGANIZATION: Structure your answer clearly with distinct sections or bullet points
+2. TRUTHFULNESS: Only cite information that appears in the provided sources. If sources don't address the question, say so clearly.
+3. CITATIONS: Always cite specific sources (e.g., "Source 1", "Source 2") when referencing information
+4. LINKS: When citing sources, include clickable links if a URL is provided in the source header (format: [Source Name](URL) or Source Name: URL)
+5. COMPLETENESS: If multiple sources discuss the same topic, mention the key points from each
+6. HONESTY: If the sources don't fully answer the question, acknowledge limitations"""
+        
         # Create optimized prompt (concise = 40% token reduction)
-        prompt = f"""{system_prompt}
+        prompt = f"""{system_prompt}{state_instruction}{quality_instructions}
 
 Context from legal database:
 {context_text}
 
 User Question: {query}
 
-Provide a clear, accurate answer with citations."""
+Provide a clear, accurate answer with citations. Structure your response with clear sections or bullet points. Always cite sources (e.g., "Source 1", "Source 2") when referencing information. IMPORTANT: When a source includes a URL in its header, include that clickable link in your answer (format: [Source Name](URL) for markdown links)."""
         
         try:
             # Check cost limit before making API call (if tracker is available)

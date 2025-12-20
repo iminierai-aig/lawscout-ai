@@ -48,10 +48,10 @@ def _construct_courtlistener_url(citation: str) -> str:
         return None
     
     # Try to parse common citation formats
-    # Example: "123 U.S. 456" or "456 F.3d 789"
+    # Example: "123 U.S. 456" or "456 F.3d 789" or "357 F.3d 1256"
     patterns = [
         (r'(\d+)\s+U\.S\.(?:\s+App\.)?\s+(\d+)', 'us'),
-        (r'(\d+)\s+F\.\s*(?:2d|3d|4th)?\s+(\d+)', 'f'),
+        (r'(\d+)\s+F\.\s*(?:2d|3d|4th)?\s+(\d+)', 'f'),  # Handles F.2d, F.3d, F.4th
         (r'(\d+)\s+S\.\s*Ct\.\s+(\d+)', 'sct'),
         (r'(\d+)\s+F\.\s*Supp\.\s*(?:2d|3d)?\s+(\d+)', 'f-supp'),
     ]
@@ -65,10 +65,24 @@ def _construct_courtlistener_url(citation: str) -> str:
     
     return None
 
-def _transform_sources_optimized(sources: list) -> list:
+def _transform_sources_optimized(sources: list, query: str = "") -> list:
     """Optimized source transformation - minimize dict lookups"""
     sources_list = []
     MIN_SCORE_THRESHOLD = -0.5  # Filter out results with very negative scores
+    
+    # Detect state in query for result boosting
+    state_keywords = {
+        'florida': ['florida', 'fl ', 'fl.', 'fla.', 'fla ', '1st dca', '2d dca', '3d dca', '4th dca', '5th dca', 'fla.'],
+        'california': ['california', 'ca ', 'cal.', 'cal '],
+        'new york': ['new york', 'ny ', 'n.y.'],
+        'texas': ['texas', 'tx ', 'tx.'],
+    }
+    detected_state = None
+    query_lower = query.lower() if query else ""
+    for state, keywords in state_keywords.items():
+        if any(keyword in query_lower for keyword in keywords):
+            detected_state = state
+            break
     
     for src in sources:
         raw_score = src.get('score', 0.0)
@@ -76,6 +90,20 @@ def _transform_sources_optimized(sources: list) -> list:
         # Filter out results with very poor scores (unless it's the only result)
         if raw_score < MIN_SCORE_THRESHOLD and len(sources) > 1:
             continue
+        
+        # Additional relevance check: if query has specific keywords, check if result contains them
+        # This improves search relevance by filtering truly off-topic results
+        if query_keywords and len(query_keywords) > 2:  # Only if query has enough keywords
+            content_lower = (src.get('full_text') or src.get('text', '')).lower()
+            metadata_lower = str(src.get('metadata', {})).lower()
+            
+            # Count how many query keywords appear in the result
+            keyword_matches = sum(1 for keyword in query_keywords if keyword in content_lower or keyword in metadata_lower)
+            keyword_ratio = keyword_matches / len(query_keywords)
+            
+            # If less than 20% of keywords match and score is low, filter it out
+            if keyword_ratio < 0.2 and raw_score < 0.1 and len(sources) > 2:
+                continue
         
         # Get metadata - it might be nested or at top level
         metadata = src.get('metadata', {})
@@ -100,24 +128,39 @@ def _transform_sources_optimized(sources: list) -> list:
         if not title or title == 'Unknown':
             content = src.get('full_text') or src.get('text', '')
             if content:
-                # Look for case name patterns in first 300 chars (e.g., "Plaintiff v. Defendant")
-                # Common patterns: "v.", "vs.", "v ", "versus"
-                case_name_match = re.search(
-                    r'([A-Z][^.]{10,80}?)\s+(?:v\.?|vs\.?|versus)\s+([A-Z][^.]{10,80}?)',
-                    content[:300],
+                # First, try to extract case name that appears before a citation
+                # Pattern: Case name followed by citation (e.g., "Hickson Corp. v. N. Crossarm Co., 357 F.3d 1256")
+                case_with_citation = re.search(
+                    r'([A-Z][^,]{10,120}?)\s*,\s*\d+\s+(?:F\.\s*(?:2d|3d|4th)?|U\.S\.|S\.\s*Ct\.|F\.\s*Supp\.)\s+\d+',
+                    content[:500],
                     re.IGNORECASE
                 )
-                if case_name_match:
-                    title = f"{case_name_match.group(1).strip()} v. {case_name_match.group(2).strip()}"
-                else:
-                    # Try to find a title-like line (first non-empty line that looks like a title)
-                    lines = content[:500].split('\n')
-                    for line in lines[:5]:  # Check first 5 lines
+                if case_with_citation:
+                    potential_title = case_with_citation.group(1).strip()
+                    # Clean up: remove trailing punctuation, ensure it looks like a case name
+                    potential_title = re.sub(r'[.,;]+$', '', potential_title)
+                    if len(potential_title) > 10 and len(potential_title) < 150:
+                        title = potential_title
+                
+                # If that didn't work, look for case name patterns (e.g., "Plaintiff v. Defendant")
+                if not title or title == 'Unknown':
+                    case_name_match = re.search(
+                        r'([A-Z][^.,]{5,60}?)\s+(?:v\.?|vs\.?|versus)\s+([A-Z][^.,]{5,60}?)',
+                        content[:500],
+                        re.IGNORECASE
+                    )
+                    if case_name_match:
+                        title = f"{case_name_match.group(1).strip()} v. {case_name_match.group(2).strip()}"
+                
+                # If still no title, try to find a title-like line
+                if not title or title == 'Unknown':
+                    lines = content[:800].split('\n')
+                    for line in lines[:10]:  # Check first 10 lines
                         line = line.strip()
                         # Skip very short lines, lines that are all caps (often headers), and lines with citations
-                        if (len(line) > 15 and len(line) < 200 and 
+                        if (len(line) > 15 and len(line) < 250 and 
                             not line.isupper() and 
-                            not re.search(r'\d+\s+(?:U\.S\.|F\.(?:2d|3d|4th)?|S\.\s*Ct\.)', line, re.IGNORECASE)):
+                            not re.search(r'\d+\s+(?:U\.S\.|F\.\s*(?:2d|3d|4th)?|S\.\s*Ct\.)', line, re.IGNORECASE)):
                             # Check if it looks like a case name or document title
                             if re.search(r'[A-Z][a-z]+', line):  # Has mixed case
                                 title = line
@@ -147,7 +190,12 @@ def _transform_sources_optimized(sources: list) -> list:
         if not title:
             title = 'Unknown'
         
-        # Extract citation from multiple possible fields (check both metadata and top-level)
+        # Extract ALL citations from text (not just the first one)
+        # This improves citation usefulness per our core principles
+        all_citations = []
+        content = src.get('full_text') or src.get('text', '')
+        
+        # First, check metadata for citation
         citation = (
             metadata.get('citation') or
             src.get('citation') or
@@ -155,44 +203,47 @@ def _transform_sources_optimized(sources: list) -> list:
             src.get('case_citation') or
             metadata.get('citation_string') or
             src.get('citation_string') or
-            metadata.get('docket_number') or
-            src.get('docket_number') or
-            metadata.get('docket') or
-            src.get('docket') or
             None
         )
         
-        # If no citation in metadata, try to extract from text content
-        if not citation:
-            content = src.get('full_text') or src.get('text', '')
-            if content:
-                # Look for common citation patterns in the first 1000 chars (expanded search)
-                # Try multiple patterns for different citation formats
-                citation_patterns = [
-                    r'\d+\s+(?:U\.S\.|F\.(?:2d|3d|4th)?|S\.\s*Ct\.|F\.\s*Supp\.(?:2d|3d)?)\s+\d+',  # Standard: "123 U.S. 456"
-                    r'\d+\s+(?:Cal\.|Cal\.\s*App\.|Cal\.\s*Rptr\.)\s+\d+',  # California: "123 Cal. 456"
-                    r'\d+\s+(?:N\.Y\.|N\.Y\.\s*App\.)\s+\d+',  # New York: "123 N.Y. 456"
-                    r'\d+\s+(?:Del\.|Del\.\s*Ch\.)\s+\d+',  # Delaware: "123 Del. 456"
-                    r'\(\d{4}\)',  # Year in parentheses often precedes citations
-                ]
-                
-                for pattern in citation_patterns:
-                    citation_match = re.search(pattern, content[:1000], re.IGNORECASE)
-                    if citation_match:
-                        citation = citation_match.group(0)
-                        # If we found a year pattern, try to get the full citation around it
-                        if pattern == r'\(\d{4}\)':
-                            # Look for citation near the year
-                            year_pos = citation_match.start()
-                            context = content[max(0, year_pos-50):year_pos+100]
-                            full_citation = re.search(
-                                r'\d+\s+(?:U\.S\.|F\.(?:2d|3d|4th)?|S\.\s*Ct\.|F\.\s*Supp\.(?:2d|3d)?)\s+\d+',
-                                context,
-                                re.IGNORECASE
-                            )
-                            if full_citation:
-                                citation = full_citation.group(0)
-                        break
+        if citation:
+            all_citations.append(citation)
+        
+        # Extract all citations from text content (up to first 3000 chars for performance)
+        if content:
+            # Comprehensive citation patterns
+            citation_patterns = [
+                # Federal Reporter with series (F.2d, F.3d, F.4th) - handles "357 F.3d 1256"
+                r'\d+\s+F\.\s*(?:2d|3d|4th)?\s+\d+',
+                # U.S. Reports
+                r'\d+\s+U\.S\.(?:\s+App\.)?\s+\d+',
+                # Supreme Court
+                r'\d+\s+S\.\s*Ct\.\s+\d+',
+                # Federal Supplement
+                r'\d+\s+F\.\s*Supp\.\s*(?:2d|3d)?\s+\d+',
+                # State reporters
+                r'\d+\s+(?:Cal\.|Cal\.\s*App\.|Cal\.\s*Rptr\.)\s+\d+',  # California
+                r'\d+\s+(?:N\.Y\.|N\.Y\.\s*App\.)\s+\d+',  # New York
+                r'\d+\s+(?:Del\.|Del\.\s*Ch\.)\s+\d+',  # Delaware
+                r'\d+\s+(?:Fla\.|Fla\.\s*App\.)\s+\d+',  # Florida
+                r'\d+\s+(?:Tex\.|Tex\.\s*App\.)\s+\d+',  # Texas
+            ]
+            
+            # Find all citations in the text
+            found_citations = set()  # Use set to avoid duplicates
+            for pattern in citation_patterns:
+                matches = re.finditer(pattern, content[:3000], re.IGNORECASE)
+                for match in matches:
+                    cit = match.group(0).strip()
+                    # Clean up citation (remove extra spaces)
+                    cit = re.sub(r'\s+', ' ', cit)
+                    if cit not in found_citations:
+                        found_citations.add(cit)
+                        all_citations.append(cit)
+            
+            # If we found citations, use the first one as primary, but keep all
+            if all_citations and not citation:
+                citation = all_citations[0]
         
         # Extract URL from multiple possible fields (PDF links, case URLs, etc.)
         url = (
@@ -217,8 +268,32 @@ def _transform_sources_optimized(sources: list) -> list:
         if not url and citation:
             url = _construct_courtlistener_url(citation)
         
-        # Normalize score to 0-1 range for display (negative scores become 0)
+        # Boost score for state-specific results if state detected in query
         display_score = max(raw_score, 0.0)
+        if detected_state:
+            # Check if result is state-specific
+            content_lower = (src.get('full_text') or src.get('text', '')).lower()
+            metadata_lower = str(metadata).lower()
+            court_lower = str(court).lower() if court else ""
+            
+            # Boost if state keywords found in content, metadata, or court
+            state_boost = 0.0
+            for keyword in state_keywords.get(detected_state, []):
+                if keyword in content_lower or keyword in metadata_lower or keyword in court_lower:
+                    state_boost = 0.15  # 15% boost for state-specific results
+                    break
+            
+            # Also check for state court patterns
+            if detected_state == 'florida' and ('fla.' in court_lower or 'dca' in court_lower or 'florida' in court_lower):
+                state_boost = 0.15
+            elif detected_state == 'california' and ('cal.' in court_lower or 'california' in court_lower):
+                state_boost = 0.15
+            elif detected_state == 'new york' and ('n.y.' in court_lower or 'new york' in court_lower):
+                state_boost = 0.15
+            elif detected_state == 'texas' and ('tex.' in court_lower or 'texas' in court_lower):
+                state_boost = 0.15
+            
+            display_score = min(display_score + state_boost, 1.0)  # Cap at 1.0
         
         # Extract court from multiple possible fields
         court = (
@@ -232,6 +307,23 @@ def _transform_sources_optimized(sources: list) -> list:
             src.get('jurisdiction') or
             None
         )
+        
+        # If no court in metadata, try to extract from text (e.g., "11th Cir.", "Fla. 1st DCA")
+        if not court:
+            content = src.get('full_text') or src.get('text', '')
+            if content:
+                # Look for court patterns near citations (e.g., "(11th Cir. 2004)")
+                court_patterns = [
+                    r'\((\d+(?:st|nd|rd|th)?\s*(?:Cir\.|D\.C\.|D\.\s*C\.))',  # "11th Cir.", "1st D.C."
+                    r'\((Fla\.\s*(?:1st|2d|3d|4th|5th)?\s*DCA?)',  # "Fla. 1st DCA"
+                    r'\((Cal\.\s*(?:App\.|Sup\.\s*Ct\.))',  # "Cal. App."
+                    r'\((N\.Y\.\s*(?:App\.|Sup\.\s*Ct\.))',  # "N.Y. App."
+                ]
+                for pattern in court_patterns:
+                    court_match = re.search(pattern, content[:1000], re.IGNORECASE)
+                    if court_match:
+                        court = court_match.group(1).strip()
+                        break
         
         # Extract date from multiple possible fields
         date = (
@@ -248,6 +340,17 @@ def _transform_sources_optimized(sources: list) -> list:
             None
         )
         
+        # If no date in metadata, try to extract from text (year in parentheses near citation)
+        if not date:
+            content = src.get('full_text') or src.get('text', '')
+            if content:
+                # Look for year pattern near citation (e.g., "(11th Cir. 2004)")
+                year_match = re.search(r'\([^)]*(?:19|20)\d{2}\)', content[:1000])
+                if year_match:
+                    year = re.search(r'(19|20)\d{2}', year_match.group(0))
+                    if year:
+                        date = year.group(0)
+        
         sources_list.append({
             "content": src.get('full_text') or src.get('text', ''),
             "score": display_score,
@@ -260,8 +363,18 @@ def _transform_sources_optimized(sources: list) -> list:
                 "url": url
             },
             # Preserve extracted citations if available
-            "citations": src.get('citations', [])
+            "citations": src.get('citations', []),
+            # Store raw score for sorting
+            "_sort_score": display_score
         })
+    
+    # Sort by boosted score (state-specific results first)
+    sources_list.sort(key=lambda x: x.get('_sort_score', 0), reverse=True)
+    
+    # Remove internal sort key before returning
+    for src in sources_list:
+        src.pop('_sort_score', None)
+    
     return sources_list
 
 @router.post(
@@ -332,7 +445,7 @@ async def search(request: SearchRequest, req: Request):
         request_time = time.time() - request_start
         
         # Optimized source transformation
-        sources_list = _transform_sources_optimized(results.get('sources', []))
+        sources_list = _transform_sources_optimized(results.get('sources', []), request.query)
         
         # Build response
         response = SearchResponse(

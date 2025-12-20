@@ -4,6 +4,8 @@ import { useState, useEffect } from 'react'
 import axios from 'axios'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
+import ReactMarkdown from 'react-markdown'
+import remarkGfm from 'remark-gfm'
 import Sidebar from '@/components/Sidebar'
 import { useAuth } from '@/contexts/AuthContext'
 import { trackSearch } from '@/lib/api'
@@ -66,7 +68,7 @@ interface SearchResponse {
 }
 
 export default function Home() {
-  const { user, token, checkLimit, refreshUser } = useAuth()
+  const { user, token, checkLimit, refreshUser, loading: authLoading } = useAuth()
   const router = useRouter()
   const [query, setQuery] = useState('')
   const [answer, setAnswer] = useState('')
@@ -161,22 +163,72 @@ export default function Home() {
     const queryToSearch = searchQuery || query
     if (!queryToSearch.trim()) return
 
-    // Require authentication before searching
-    if (!user || !token) {
+    // Wait for auth to finish loading and refresh if needed
+    if (authLoading || (!user && typeof window !== 'undefined')) {
+      const storedToken = localStorage.getItem('lawscout_auth_token')
+      if (storedToken && !user) {
+        // Token exists but user state not loaded - refresh it
+        try {
+          await refreshUser()
+        } catch (err) {
+          console.error('Failed to refresh auth state:', err)
+        }
+      }
+      // Small delay to let state update
+      await new Promise(resolve => setTimeout(resolve, 200))
+    }
+
+    // Check authentication - use localStorage as fallback to avoid race conditions
+    const storedToken = typeof window !== 'undefined' ? localStorage.getItem('lawscout_auth_token') : null
+    const storedUser = typeof window !== 'undefined' ? (() => {
+      try {
+        const userStr = localStorage.getItem('lawscout_user')
+        return userStr ? JSON.parse(userStr) : null
+      } catch {
+        return null
+      }
+    })() : null
+    const currentToken = token || storedToken
+    const currentUser = user || storedUser
+
+    if (!currentUser || !currentToken) {
       setError('Please sign in or create an account to search. Sign up is free!')
       return
     }
 
-    // Check search limit
+    // Check search limit (use currentToken)
     try {
+      // Use checkLimit which uses token from context, or call API directly with currentToken
       const limit = await checkLimit()
       if (!limit.can_search) {
         setError(limit.message)
         return
       }
     } catch (err: any) {
-      setError('Unable to verify search limit. Please try again.')
-      return
+      // If checkLimit fails, try direct API call with currentToken
+      if (currentToken) {
+        try {
+          const res = await fetch(`${apiUrl}/api/auth/search/check-limit`, {
+            headers: { 
+              'Authorization': `Bearer ${currentToken}`,
+              'Content-Type': 'application/json'
+            }
+          })
+          if (res.ok) {
+            const limitData = await res.json()
+            if (!limitData.can_search) {
+              setError(limitData.message)
+              return
+            }
+          }
+        } catch (apiErr) {
+          console.error('Failed to check limit:', apiErr)
+          // Continue anyway - let backend handle auth
+        }
+      } else {
+        setError('Unable to verify search limit. Please try again.')
+        return
+      }
     }
 
     setLoading(true)
@@ -187,6 +239,7 @@ export default function Home() {
     
     try {
       // Use optimized axios instance with connection pooling
+      // Use currentToken (from state or localStorage) to ensure we have the token
       const response = await apiClient.post<SearchResponse>(`${apiUrl}/api/v1/search`, {
         query: queryToSearch,
         collection: collection,
@@ -194,6 +247,10 @@ export default function Home() {
         use_hybrid: useHybrid,
         use_reranking: useReranking,
         extract_citations: extractCitations
+      }, {
+        headers: {
+          'Authorization': `Bearer ${currentToken}`
+        }
       })
       
       saveToHistory(queryToSearch)
@@ -223,9 +280,9 @@ export default function Home() {
       }
 
       // Track search if user is authenticated
-      if (user && token) {
+      if (currentUser && currentToken) {
         try {
-          await trackSearch(token, queryToSearch, collection, mappedResults.length)
+          await trackSearch(currentToken, queryToSearch, collection, mappedResults.length)
           await refreshUser() // Refresh user data to update search count
         } catch (err) {
           console.error('Failed to track search:', err)
@@ -260,8 +317,33 @@ export default function Home() {
   }
 
   const handleExampleClick = async (exampleQuery: string) => {
-    // Require authentication
-    if (!user || !token) {
+    // Wait for auth to finish loading and refresh if needed
+    if (authLoading || (!user && typeof window !== 'undefined')) {
+      const storedToken = localStorage.getItem('lawscout_auth_token')
+      if (storedToken && !user) {
+        try {
+          await refreshUser()
+        } catch (err) {
+          console.error('Failed to refresh user during example click:', err)
+        }
+      }
+      await new Promise(resolve => setTimeout(resolve, 200))
+    }
+
+    // Check authentication - use localStorage as fallback
+    const storedToken = typeof window !== 'undefined' ? localStorage.getItem('lawscout_auth_token') : null
+    const storedUser = typeof window !== 'undefined' ? (() => {
+      try {
+        const userStr = localStorage.getItem('lawscout_user')
+        return userStr ? JSON.parse(userStr) : null
+      } catch {
+        return null
+      }
+    })() : null
+    const currentToken = token || storedToken
+    const currentUser = user || storedUser
+
+    if (!currentUser || !currentToken) {
       setError('Please sign in or create an account to search. Sign up is free!')
       return
     }
@@ -490,8 +572,39 @@ Content: ${source.full_text || source.snippet}
                 </button>
               )}
             </div>
-            <div className="prose max-w-none">
-              <p className="text-gray-300 leading-relaxed whitespace-pre-wrap font-light">{answer}</p>
+            <div className="prose prose-invert max-w-none">
+              <ReactMarkdown
+                remarkPlugins={[remarkGfm]}
+                className="text-gray-300 leading-relaxed font-light"
+                components={{
+                  // Style links to match the site theme
+                  a: ({node, ...props}) => (
+                    <a 
+                      {...props} 
+                      className="text-blue-400 hover:text-blue-300 underline transition-colors"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    />
+                  ),
+                  // Style lists
+                  ul: ({node, ...props}) => (
+                    <ul {...props} className="list-disc list-inside space-y-2 my-4" />
+                  ),
+                  ol: ({node, ...props}) => (
+                    <ol {...props} className="list-decimal list-inside space-y-2 my-4" />
+                  ),
+                  // Style paragraphs
+                  p: ({node, ...props}) => (
+                    <p {...props} className="mb-4" />
+                  ),
+                  // Style strong/bold
+                  strong: ({node, ...props}) => (
+                    <strong {...props} className="font-semibold text-white" />
+                  ),
+                }}
+              >
+                {answer}
+              </ReactMarkdown>
             </div>
           </div>
         )}

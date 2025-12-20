@@ -116,6 +116,19 @@ All data is public domain / freely available.
 
 ---
 
+## 🎯 Core Principles
+
+LawScout AI is built on four core principles that guide all development:
+
+1. **Search Relevance** - Prioritize the most relevant results, especially for state-specific queries
+2. **Organization** - Clear, well-structured presentation with complete metadata
+3. **Truthfulness** - Honest, accurate answers with proper source attribution
+4. **Citation Usefulness** - Accurate, linkable citations in proper legal format
+
+See [docs/CORE_PRINCIPLES.md](docs/CORE_PRINCIPLES.md) for detailed development guidelines.
+
+---
+
 ## ⚠️ Disclaimer
 
 LawScout AI is a **research tool only** and does not provide legal advice. All results should be verified with authoritative sources. Always consult qualified legal professionals for legal matters.
