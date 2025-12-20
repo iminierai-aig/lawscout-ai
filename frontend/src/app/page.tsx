@@ -175,8 +175,8 @@ export default function Home() {
       setAnswer(response.data.answer || 'No answer generated')
       
       const mappedResults = (response.data.sources || []).map((source: any, idx: number) => ({
-        case_name: source.metadata?.title || 'Unknown',
-        citation: source.metadata?.citation || 'N/A',
+        case_name: source.metadata?.title || source.metadata?.name || 'Unknown',
+        citation: source.metadata?.citation || null,
         relevance_score: source.score || 0,
         snippet: source.content?.substring(0, 300) || '',
         full_text: source.content || '',
@@ -511,7 +511,7 @@ Content: ${source.full_text || source.snippet}
                           ) : (
                             <span className="text-gray-600">Score: Low relevance</span>
                           )}
-                          {result.citation && result.citation !== 'N/A' ? (
+                          {result.citation ? (
                             result.url ? (
                               <a
                                 href={result.url}
@@ -558,7 +558,7 @@ Content: ${source.full_text || source.snippet}
                           {result.url.includes('.pdf') || result.url.includes('pdf') ? 'View PDF' : 'View Full Source'}
                         </a>
                       )}
-                      {result.citation && result.citation !== 'N/A' && !result.url && (
+                      {result.citation && !result.url && (
                         <span className="text-sm text-gray-500 font-light">Citation: {result.citation}</span>
                       )}
                     </div>
