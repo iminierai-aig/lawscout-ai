@@ -20,16 +20,16 @@ from functools import lru_cache
 from .hybrid_search import HybridSearchEngine
 from .citation_utils import CitationExtractor
 
+logger = logging.getLogger(__name__)
+
 # Optional usage tracker import (don't fail if it's missing)
 try:
     from .usage_tracker import get_usage_tracker
     USAGE_TRACKER_AVAILABLE = True
-except ImportError:
+except ImportError as e:
     USAGE_TRACKER_AVAILABLE = False
     get_usage_tracker = None
-    logger.warning("⚠️  Usage tracker not available - cost tracking disabled")
-
-logger = logging.getLogger(__name__)
+    logger.warning(f"⚠️  Usage tracker not available - cost tracking disabled: {e}")
 
 load_dotenv()
 
