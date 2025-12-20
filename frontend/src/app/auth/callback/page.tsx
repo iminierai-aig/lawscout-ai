@@ -45,12 +45,20 @@ function AuthCallbackContent() {
             // Set cookie for middleware
             document.cookie = `lawscout_auth_token=${token}; path=/; max-age=${7 * 24 * 60 * 60}; SameSite=Lax`
             
-            // Refresh auth context
+            // Refresh auth context and wait for it to complete
             await refreshUser()
+            
+            // Small delay to ensure state propagates to all components
+            await new Promise(resolve => setTimeout(resolve, 100))
             
             setStatus('success')
             setMessage(`Successfully signed in with ${provider || 'OAuth'}!`)
-            setTimeout(() => router.push('/'), 1500)
+            
+            // Use window.location for a full page reload to ensure fresh state
+            // This prevents race conditions with React state updates
+            setTimeout(() => {
+              window.location.href = '/'
+            }, 1000)
           } else {
             throw new Error('Failed to fetch user data')
           }

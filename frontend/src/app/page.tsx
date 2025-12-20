@@ -97,6 +97,31 @@ export default function Home() {
     console.log('🔍 Frontend API URL:', apiUrl)
     console.log('🔍 Environment variable:', process.env.NEXT_PUBLIC_API_URL)
   }, [apiUrl])
+  
+  // Refresh auth state on mount if token exists but user is missing
+  // This fixes the issue where OAuth callback redirects before state propagates
+  useEffect(() => {
+    const checkAndRefreshAuth = async () => {
+      if (typeof window === 'undefined') return
+      
+      const storedToken = localStorage.getItem('lawscout_auth_token')
+      if (storedToken && !user && !loading) {
+        // Token exists but user state not loaded, refresh it
+        try {
+          await refreshUser()
+        } catch (error) {
+          console.error('Failed to refresh auth state:', error)
+        }
+      }
+    }
+    
+    // Small delay to let AuthContext initialize first
+    const timer = setTimeout(() => {
+      checkAndRefreshAuth()
+    }, 100)
+    
+    return () => clearTimeout(timer)
+  }, [user, loading, refreshUser])
 
   // Load query history from localStorage
   useEffect(() => {
