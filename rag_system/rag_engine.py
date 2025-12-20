@@ -19,7 +19,15 @@ from functools import lru_cache
 
 from .hybrid_search import HybridSearchEngine
 from .citation_utils import CitationExtractor
-from .usage_tracker import get_usage_tracker
+
+# Optional usage tracker import (don't fail if it's missing)
+try:
+    from .usage_tracker import get_usage_tracker
+    USAGE_TRACKER_AVAILABLE = True
+except ImportError:
+    USAGE_TRACKER_AVAILABLE = False
+    get_usage_tracker = None
+    logger.warning("⚠️  Usage tracker not available - cost tracking disabled")
 
 logger = logging.getLogger(__name__)
 
@@ -327,20 +335,21 @@ User Question: {query}
 Provide a clear, accurate answer with citations."""
         
         try:
-            # Check cost limit before making API call
-            usage_tracker = get_usage_tracker()
-            is_allowed, limit_message = usage_tracker.check_cost_limit()
-            
-            if not is_allowed:
-                logger.warning(limit_message)
-                return (
-                    f"⚠️ AI features temporarily disabled due to daily cost limit.\n\n"
-                    f"{limit_message}\n\n"
-                    f"Please try again after midnight or contact support."
-                )
-            
-            if limit_message:
-                logger.warning(limit_message)
+            # Check cost limit before making API call (if tracker is available)
+            if USAGE_TRACKER_AVAILABLE and get_usage_tracker:
+                usage_tracker = get_usage_tracker()
+                is_allowed, limit_message = usage_tracker.check_cost_limit()
+                
+                if not is_allowed:
+                    logger.warning(limit_message)
+                    return (
+                        f"⚠️ AI features temporarily disabled due to daily cost limit.\n\n"
+                        f"{limit_message}\n\n"
+                        f"Please try again after midnight or contact support."
+                    )
+                
+                if limit_message:
+                    logger.warning(limit_message)
             
             print("\n🤖 Generating answer with Gemini...")
             
@@ -382,14 +391,18 @@ Provide a clear, accurate answer with citations."""
                             input_tokens = int(total * 0.7)
                             output_tokens = int(total * 0.3)
                 
-                # Track usage if we have any token data
-                if input_tokens > 0 or output_tokens > 0:
-                    usage_tracker.track_usage(input_tokens, output_tokens)
-                    logger.debug(
-                        f"📊 Tracked: {input_tokens} input, {output_tokens} output tokens. "
-                        f"Daily cost: ${usage_tracker.get_daily_cost():.4f}"
-                    )
-                else:
+                # Track usage if we have any token data (if tracker is available)
+                if USAGE_TRACKER_AVAILABLE and get_usage_tracker and (input_tokens > 0 or output_tokens > 0):
+                    try:
+                        usage_tracker = get_usage_tracker()
+                        usage_tracker.track_usage(input_tokens, output_tokens)
+                        logger.debug(
+                            f"📊 Tracked: {input_tokens} input, {output_tokens} output tokens. "
+                            f"Daily cost: ${usage_tracker.get_daily_cost():.4f}"
+                        )
+                    except Exception as e:
+                        logger.warning(f"⚠️ Failed to track usage: {e}")
+                elif input_tokens == 0 and output_tokens == 0:
                     logger.warning("⚠️ No usage metadata available from Gemini API response")
                 
                 print("✅ Answer generated")
