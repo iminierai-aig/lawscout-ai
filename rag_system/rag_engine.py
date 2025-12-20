@@ -356,16 +356,41 @@ Provide a clear, accurate answer with citations."""
                 answer = response.text
                 
                 # Track usage if metadata is available
+                # Gemini API returns usage_metadata in different formats depending on version
+                input_tokens = 0
+                output_tokens = 0
+                
                 if hasattr(response, 'usage_metadata') and response.usage_metadata:
-                    input_tokens = getattr(response.usage_metadata, 'prompt_token_count', 0)
-                    output_tokens = getattr(response.usage_metadata, 'candidates_token_count', 0)
+                    # Try different attribute names for token counts
+                    input_tokens = (
+                        getattr(response.usage_metadata, 'prompt_token_count', None) or
+                        getattr(response.usage_metadata, 'input_token_count', None) or
+                        0
+                    )
+                    output_tokens = (
+                        getattr(response.usage_metadata, 'candidates_token_count', None) or
+                        getattr(response.usage_metadata, 'output_token_count', None) or
+                        getattr(response.usage_metadata, 'total_token_count', None) or
+                        0
+                    )
                     
-                    if input_tokens > 0 or output_tokens > 0:
-                        usage_tracker.track_usage(input_tokens, output_tokens)
-                        logger.debug(
-                            f"📊 Tracked: {input_tokens} input, {output_tokens} output tokens. "
-                            f"Daily cost: ${usage_tracker.get_daily_cost():.4f}"
-                        )
+                    # If we got total but not separate, estimate (rough approximation)
+                    if output_tokens == 0 and hasattr(response.usage_metadata, 'total_token_count'):
+                        total = getattr(response.usage_metadata, 'total_token_count', 0)
+                        if total > 0:
+                            # Rough estimate: 70% input, 30% output (typical for RAG)
+                            input_tokens = int(total * 0.7)
+                            output_tokens = int(total * 0.3)
+                
+                # Track usage if we have any token data
+                if input_tokens > 0 or output_tokens > 0:
+                    usage_tracker.track_usage(input_tokens, output_tokens)
+                    logger.debug(
+                        f"📊 Tracked: {input_tokens} input, {output_tokens} output tokens. "
+                        f"Daily cost: ${usage_tracker.get_daily_cost():.4f}"
+                    )
+                else:
+                    logger.warning("⚠️ No usage metadata available from Gemini API response")
                 
                 print("✅ Answer generated")
                 return answer
