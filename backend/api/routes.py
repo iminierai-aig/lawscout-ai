@@ -82,31 +82,65 @@ def _transform_sources_optimized(sources: list) -> list:
         if not isinstance(metadata, dict):
             metadata = {}
         
-        # Extract title from multiple possible locations
+        # Extract title from multiple possible locations (check both metadata and top-level)
         title = (
             metadata.get('case_name') or 
-            metadata.get('filename') or 
+            src.get('case_name') or
             metadata.get('title') or
+            src.get('title') or
+            metadata.get('filename') or
+            src.get('filename') or
+            metadata.get('name') or
+            src.get('name') or
             src.get('source') or 
             'Unknown'
         )
         
-        # Extract citation from multiple possible fields
+        # Extract citation from multiple possible fields (check both metadata and top-level)
         citation = (
-            metadata.get('citation') or 
+            metadata.get('citation') or
+            src.get('citation') or
             metadata.get('case_citation') or
+            src.get('case_citation') or
+            metadata.get('citation_string') or
+            src.get('citation_string') or
             metadata.get('docket_number') or
-            metadata.get('citation_string')
+            src.get('docket_number') or
+            metadata.get('docket') or
+            src.get('docket') or
+            None
         )
+        
+        # If no citation in metadata, try to extract from text content
+        if not citation:
+            content = src.get('full_text') or src.get('text', '')
+            # Look for common citation patterns in the first 500 chars
+            if content:
+                citation_match = re.search(
+                    r'\d+\s+(?:U\.S\.|F\.(?:2d|3d|4th)?|S\.\s*Ct\.|F\.\s*Supp\.(?:2d|3d)?)\s+\d+',
+                    content[:500],
+                    re.IGNORECASE
+                )
+                if citation_match:
+                    citation = citation_match.group(0)
         
         # Extract URL from multiple possible fields (PDF links, case URLs, etc.)
         url = (
-            metadata.get('url') or 
-            metadata.get('case_url') or 
-            metadata.get('pdf_url') or 
+            metadata.get('url') or
+            src.get('url') or
+            metadata.get('case_url') or
+            src.get('case_url') or
+            metadata.get('pdf_url') or
+            src.get('pdf_url') or
             metadata.get('download_url') or
+            src.get('download_url') or
             metadata.get('resource_uri') or
-            metadata.get('absolute_url')
+            src.get('resource_uri') or
+            metadata.get('absolute_url') or
+            src.get('absolute_url') or
+            metadata.get('link') or
+            src.get('link') or
+            None
         )
         
         # If no URL but we have a citation, try to construct CourtListener URL
@@ -116,14 +150,42 @@ def _transform_sources_optimized(sources: list) -> list:
         # Normalize score to 0-1 range for display (negative scores become 0)
         display_score = max(raw_score, 0.0)
         
+        # Extract court from multiple possible fields
+        court = (
+            metadata.get('court') or
+            src.get('court') or
+            metadata.get('court_name') or
+            src.get('court_name') or
+            metadata.get('court_string') or
+            src.get('court_string') or
+            metadata.get('jurisdiction') or
+            src.get('jurisdiction') or
+            None
+        )
+        
+        # Extract date from multiple possible fields
+        date = (
+            metadata.get('date') or
+            src.get('date') or
+            metadata.get('date_filed') or
+            src.get('date_filed') or
+            metadata.get('filing_date') or
+            src.get('filing_date') or
+            metadata.get('date_created') or
+            src.get('date_created') or
+            metadata.get('date_decided') or
+            src.get('date_decided') or
+            None
+        )
+        
         sources_list.append({
             "content": src.get('full_text') or src.get('text', ''),
             "score": display_score,
             "metadata": {
-                "title": title,
-                "collection": src.get('collection', 'unknown'),
-                "court": metadata.get('court') or metadata.get('court_name') or metadata.get('court_string'),
-                "date": metadata.get('date') or metadata.get('date_filed') or metadata.get('filing_date') or metadata.get('date_created'),
+                "title": title if title != 'Unknown' else (src.get('source') or 'Unknown'),
+                "collection": src.get('collection') or metadata.get('collection', 'unknown'),
+                "court": court,
+                "date": date,
                 "citation": citation,
                 "url": url
             },
