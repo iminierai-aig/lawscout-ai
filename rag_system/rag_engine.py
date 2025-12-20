@@ -4,6 +4,7 @@ Combines vector search with Gemini LLM for legal question answering
 Features: Hybrid search, reranking, advanced filtering, citation extraction
 """
 import os
+import logging
 from typing import List, Dict, Optional, Generator
 from qdrant_client import QdrantClient
 from qdrant_client.models import Filter, FieldCondition, MatchValue, Range
@@ -18,6 +19,9 @@ from functools import lru_cache
 
 from .hybrid_search import HybridSearchEngine
 from .citation_utils import CitationExtractor
+from .usage_tracker import get_usage_tracker
+
+logger = logging.getLogger(__name__)
 
 load_dotenv()
 
@@ -323,16 +327,46 @@ User Question: {query}
 Provide a clear, accurate answer with citations."""
         
         try:
+            # Check cost limit before making API call
+            usage_tracker = get_usage_tracker()
+            is_allowed, limit_message = usage_tracker.check_cost_limit()
+            
+            if not is_allowed:
+                logger.warning(limit_message)
+                return (
+                    f"⚠️ AI features temporarily disabled due to daily cost limit.\n\n"
+                    f"{limit_message}\n\n"
+                    f"Please try again after midnight or contact support."
+                )
+            
+            if limit_message:
+                logger.warning(limit_message)
+            
             print("\n🤖 Generating answer with Gemini...")
             
             if stream:
                 # Return generator for streaming
                 response = self.llm.generate_content(prompt, stream=True)
+                # Note: Streaming doesn't provide usage_metadata until complete
+                # We'll track it after streaming completes
                 return (chunk.text for chunk in response)
             else:
                 # Return complete answer
                 response = self.llm.generate_content(prompt)
                 answer = response.text
+                
+                # Track usage if metadata is available
+                if hasattr(response, 'usage_metadata') and response.usage_metadata:
+                    input_tokens = getattr(response.usage_metadata, 'prompt_token_count', 0)
+                    output_tokens = getattr(response.usage_metadata, 'candidates_token_count', 0)
+                    
+                    if input_tokens > 0 or output_tokens > 0:
+                        usage_tracker.track_usage(input_tokens, output_tokens)
+                        logger.debug(
+                            f"📊 Tracked: {input_tokens} input, {output_tokens} output tokens. "
+                            f"Daily cost: ${usage_tracker.get_daily_cost():.4f}"
+                        )
+                
                 print("✅ Answer generated")
                 return answer
         

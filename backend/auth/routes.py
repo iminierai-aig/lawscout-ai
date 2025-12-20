@@ -249,6 +249,23 @@ async def get_platform_stats(db: Session = Depends(get_db)):
         "recent_email_signups_7d": recent_email
     }
 
+@router.get("/admin/usage")
+async def get_gemini_usage_stats():
+    """
+    Get Gemini API usage statistics (admin only)
+    Returns daily and lifetime usage stats with costs
+    """
+    try:
+        from rag_system.usage_tracker import get_usage_tracker
+        tracker = get_usage_tracker()
+        stats = tracker.get_stats()
+        return stats
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to get usage stats: {str(e)}"
+        )
+
 @router.get("/health")
 async def health_check():
     """Health check endpoint for auth service"""

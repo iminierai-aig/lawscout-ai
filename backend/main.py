@@ -62,6 +62,11 @@ async def lifespan(app: FastAPI):
         app.state.rag_engine = rag_engine
         logger.info("✅ RAG Engine ready!")
         print("✅ RAG Engine ready!")
+        
+        # Log initial usage stats
+        from rag_system.usage_tracker import get_usage_tracker
+        tracker = get_usage_tracker()
+        tracker.log_stats()
     except Exception as e:
         logger.error(f"❌ Failed to initialize RAG engine: {e}", exc_info=True)
         print(f"❌ Failed to initialize RAG engine: {e}")
