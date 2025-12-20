@@ -93,8 +93,59 @@ def _transform_sources_optimized(sources: list) -> list:
             metadata.get('name') or
             src.get('name') or
             src.get('source') or 
-            'Unknown'
+            None
         )
+        
+        # If no title in metadata, try to extract from text content
+        if not title or title == 'Unknown':
+            content = src.get('full_text') or src.get('text', '')
+            if content:
+                # Look for case name patterns in first 300 chars (e.g., "Plaintiff v. Defendant")
+                # Common patterns: "v.", "vs.", "v ", "versus"
+                case_name_match = re.search(
+                    r'([A-Z][^.]{10,80}?)\s+(?:v\.?|vs\.?|versus)\s+([A-Z][^.]{10,80}?)',
+                    content[:300],
+                    re.IGNORECASE
+                )
+                if case_name_match:
+                    title = f"{case_name_match.group(1).strip()} v. {case_name_match.group(2).strip()}"
+                else:
+                    # Try to find a title-like line (first non-empty line that looks like a title)
+                    lines = content[:500].split('\n')
+                    for line in lines[:5]:  # Check first 5 lines
+                        line = line.strip()
+                        # Skip very short lines, lines that are all caps (often headers), and lines with citations
+                        if (len(line) > 15 and len(line) < 200 and 
+                            not line.isupper() and 
+                            not re.search(r'\d+\s+(?:U\.S\.|F\.(?:2d|3d|4th)?|S\.\s*Ct\.)', line, re.IGNORECASE)):
+                            # Check if it looks like a case name or document title
+                            if re.search(r'[A-Z][a-z]+', line):  # Has mixed case
+                                title = line
+                                break
+        
+        # If still no title, try to clean up filename
+        if not title or title == 'Unknown':
+            filename = metadata.get('filename') or src.get('filename') or src.get('source')
+            if filename:
+                # Clean up filename: remove extensions, underscores, dates
+                title = filename
+                # Remove common file extensions
+                title = re.sub(r'\.(pdf|txt|docx?)$', '', title, flags=re.IGNORECASE)
+                # Replace underscores and hyphens with spaces
+                title = re.sub(r'[_-]', ' ', title)
+                # Remove date patterns (YYYYMMDD, YYYY-MM-DD, etc.)
+                title = re.sub(r'\d{4}[-_]?\d{2}[-_]?\d{2}', '', title)
+                # Remove common prefixes like "EX-99.1_", "8-K_", etc.
+                title = re.sub(r'^(?:EX-\d+\.\d+_|8-K_|EX-\d+_)', '', title, flags=re.IGNORECASE)
+                # Clean up multiple spaces
+                title = re.sub(r'\s+', ' ', title).strip()
+                # Capitalize first letter of each word for readability
+                if title:
+                    title = ' '.join(word.capitalize() if word.islower() else word for word in title.split())
+        
+        # Final fallback
+        if not title:
+            title = 'Unknown'
         
         # Extract citation from multiple possible fields (check both metadata and top-level)
         citation = (
@@ -114,15 +165,34 @@ def _transform_sources_optimized(sources: list) -> list:
         # If no citation in metadata, try to extract from text content
         if not citation:
             content = src.get('full_text') or src.get('text', '')
-            # Look for common citation patterns in the first 500 chars
             if content:
-                citation_match = re.search(
-                    r'\d+\s+(?:U\.S\.|F\.(?:2d|3d|4th)?|S\.\s*Ct\.|F\.\s*Supp\.(?:2d|3d)?)\s+\d+',
-                    content[:500],
-                    re.IGNORECASE
-                )
-                if citation_match:
-                    citation = citation_match.group(0)
+                # Look for common citation patterns in the first 1000 chars (expanded search)
+                # Try multiple patterns for different citation formats
+                citation_patterns = [
+                    r'\d+\s+(?:U\.S\.|F\.(?:2d|3d|4th)?|S\.\s*Ct\.|F\.\s*Supp\.(?:2d|3d)?)\s+\d+',  # Standard: "123 U.S. 456"
+                    r'\d+\s+(?:Cal\.|Cal\.\s*App\.|Cal\.\s*Rptr\.)\s+\d+',  # California: "123 Cal. 456"
+                    r'\d+\s+(?:N\.Y\.|N\.Y\.\s*App\.)\s+\d+',  # New York: "123 N.Y. 456"
+                    r'\d+\s+(?:Del\.|Del\.\s*Ch\.)\s+\d+',  # Delaware: "123 Del. 456"
+                    r'\(\d{4}\)',  # Year in parentheses often precedes citations
+                ]
+                
+                for pattern in citation_patterns:
+                    citation_match = re.search(pattern, content[:1000], re.IGNORECASE)
+                    if citation_match:
+                        citation = citation_match.group(0)
+                        # If we found a year pattern, try to get the full citation around it
+                        if pattern == r'\(\d{4}\)':
+                            # Look for citation near the year
+                            year_pos = citation_match.start()
+                            context = content[max(0, year_pos-50):year_pos+100]
+                            full_citation = re.search(
+                                r'\d+\s+(?:U\.S\.|F\.(?:2d|3d|4th)?|S\.\s*Ct\.|F\.\s*Supp\.(?:2d|3d)?)\s+\d+',
+                                context,
+                                re.IGNORECASE
+                            )
+                            if full_citation:
+                                citation = full_citation.group(0)
+                        break
         
         # Extract URL from multiple possible fields (PDF links, case URLs, etc.)
         url = (
