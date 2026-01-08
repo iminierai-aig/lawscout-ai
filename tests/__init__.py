@@ -1,4 +1,0 @@
-"""
-LawScout AI Test Suite
-"""
-
