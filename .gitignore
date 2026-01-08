@@ -64,6 +64,14 @@ troubleshooting/
 # Local testing
 verify_embeddings.py
 
+# SCRIPTS
+scripts/
+tests/
+preprocessing/
+pytest.ini
+requirements-dev.txt
+
+
 # Temporary documentation files
 *_TEMP.md
 *_STATUS.md
