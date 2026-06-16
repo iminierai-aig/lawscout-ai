@@ -11,6 +11,10 @@ from fastapi.middleware.gzip import GZipMiddleware
 from starlette.middleware.sessions import SessionMiddleware
 from contextlib import asynccontextmanager
 from dotenv import load_dotenv
+from slowapi import _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
+from slowapi.middleware import SlowAPIMiddleware
+from limiter import limiter
 from auth import router as auth_router, init_db
 
 # Setup logging to file
@@ -87,6 +91,12 @@ app = FastAPI(
     version="2.1.1",
     lifespan=lifespan
 )
+
+# Rate limiting (per client IP). Global default in limiter.py; stricter
+# per-route limits (e.g. /login, /register) are applied with @limiter.limit.
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+app.add_middleware(SlowAPIMiddleware)
 
 # Session middleware for OAuth (must be before other middleware)
 import os

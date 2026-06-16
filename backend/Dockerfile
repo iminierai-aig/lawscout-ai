@@ -46,6 +46,7 @@ ENV PATH=/root/.local/bin:$PATH
 COPY api/ ./api/
 COPY rag_system/ ./rag_system/
 COPY main.py .
+COPY limiter.py .
 COPY auth/ ./auth/
 
 # Create cache directory for models (downloaded at runtime, not in image)
