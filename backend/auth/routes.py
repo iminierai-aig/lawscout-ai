@@ -7,6 +7,7 @@ from datetime import datetime
 from starlette.middleware.sessions import SessionMiddleware
 from . import models, schemas, security
 from .database import get_db
+from limiter import limiter
 import os
 
 # Optional OAuth import (only if oauth.py exists)
@@ -20,7 +21,8 @@ except ImportError:
 router = APIRouter(prefix="/api/auth", tags=["authentication"])
 
 @router.post("/register", response_model=schemas.Token, status_code=status.HTTP_201_CREATED)
-async def register(user_create: schemas.UserCreate, db: Session = Depends(get_db)):
+@limiter.limit("10/minute")
+async def register(request: Request, user_create: schemas.UserCreate, db: Session = Depends(get_db)):
     db_user = security.get_user_by_email(db, email=user_create.email)
     if db_user:
         raise HTTPException(
@@ -60,7 +62,9 @@ async def register(user_create: schemas.UserCreate, db: Session = Depends(get_db
     )
 
 @router.post("/login", response_model=schemas.Token)
+@limiter.limit("10/minute")
 async def login(
+    request: Request,
     form_data: OAuth2PasswordRequestForm = Depends(),
     db: Session = Depends(get_db)
 ):
@@ -167,7 +171,11 @@ async def track_search(
     }
 
 @router.post("/admin/upgrade-user")
-async def upgrade_user_to_pro(email: str, db: Session = Depends(get_db)):
+async def upgrade_user_to_pro(
+    email: str,
+    db: Session = Depends(get_db),
+    _admin: models.User = Depends(security.require_admin),
+):
     user = security.get_user_by_email(db, email)
     if not user:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
@@ -178,7 +186,10 @@ async def upgrade_user_to_pro(email: str, db: Session = Depends(get_db)):
     return {"message": f"User {email} upgraded to Pro tier"}
 
 @router.get("/admin/stats")
-async def get_platform_stats(db: Session = Depends(get_db)):
+async def get_platform_stats(
+    db: Session = Depends(get_db),
+    _admin: models.User = Depends(security.require_admin),
+):
     from sqlalchemy import func, and_
     from datetime import datetime, timedelta
     
@@ -250,7 +261,9 @@ async def get_platform_stats(db: Session = Depends(get_db)):
     }
 
 @router.get("/admin/usage")
-async def get_gemini_usage_stats():
+async def get_gemini_usage_stats(
+    _admin: models.User = Depends(security.require_admin),
+):
     """
     Get Gemini API usage statistics (admin only)
     Returns daily and lifetime usage stats with costs

@@ -11,13 +11,28 @@ from .models import User
 from .schemas import TokenData
 import os
 
-# Configuration - use environment variable in production
-SECRET_KEY = os.getenv("JWT_SECRET_KEY", "CHANGE_THIS_IN_PRODUCTION_USE_openssl_rand_hex_32")
+# Configuration - JWT_SECRET_KEY MUST be set in the environment.
+# Fail closed: a missing/placeholder secret makes every token forgeable, so we
+# refuse to start rather than silently signing with a publicly-known default.
+SECRET_KEY = os.getenv("JWT_SECRET_KEY")
+if not SECRET_KEY or SECRET_KEY.startswith("CHANGE_THIS"):
+    raise RuntimeError(
+        "JWT_SECRET_KEY is not set (or is still the placeholder). "
+        "Generate one with `openssl rand -hex 32` and set it in the environment "
+        "before starting the app."
+    )
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_DAYS = 7
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/login")
+
+# Comma-separated list of admin emails, e.g. ADMIN_EMAILS="a@x.com,b@y.com"
+ADMIN_EMAILS = {
+    e.strip().lower()
+    for e in os.getenv("ADMIN_EMAILS", "").split(",")
+    if e.strip()
+}
 
 FREE_TIER_LIMIT = 15
 PRO_TIER_LIMIT = -1
@@ -76,6 +91,18 @@ async def get_current_active_user(
 ) -> User:
     if not current_user.is_active:
         raise HTTPException(status_code=400, detail="Inactive user")
+    return current_user
+
+async def require_admin(
+    current_user: User = Depends(get_current_active_user)
+) -> User:
+    """Authorize admin-only endpoints. A valid token is not enough — the caller
+    must be on the ADMIN_EMAILS allowlist (broken function-level authorization)."""
+    if current_user.email.lower() not in ADMIN_EMAILS:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Admin privileges required",
+        )
     return current_user
 
 def check_search_limit(user: User) -> tuple[bool, int, str]:
