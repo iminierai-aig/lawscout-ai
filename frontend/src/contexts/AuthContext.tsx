@@ -39,8 +39,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setUserState(freshUser)
           setUser(freshUser)
         } catch (error) {
-          // Token invalid, clear auth
+          // Token invalid: clear both browser storage and the middleware cookie.
           removeToken()
+          document.cookie = 'lawscout_auth_token=; path=/; max-age=0; SameSite=Lax'
           setTokenState(null)
           setUserState(null)
         }

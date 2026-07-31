@@ -4,9 +4,6 @@ import type { NextRequest } from 'next/server'
 // Routes that require authentication
 const protectedRoutes = ['/dashboard', '/profile', '/settings', '/upgrade']
 
-// Routes that should redirect to home if already authenticated
-const authRoutes = ['/login', '/register']
-
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
   
@@ -24,10 +21,8 @@ export function middleware(request: NextRequest) {
     }
   }
 
-  // If accessing auth routes with token, redirect to home
-  if (authRoutes.includes(pathname) && token) {
-    return NextResponse.redirect(new URL('/', request.url))
-  }
+  // Do not redirect login/register based only on cookie presence. Middleware
+  // cannot validate the token, and a stale cookie must not lock users out.
 
   return NextResponse.next()
 }
