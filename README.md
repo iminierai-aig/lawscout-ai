@@ -22,7 +22,7 @@ LawScout AI is an affordable, AI-powered legal research tool designed for solo p
 - **AI-Generated Answers** - Powered by Gemini 2.5 Flash with source citations
 - **Fast Response** - ~9-10 second total response time (search + generation)
 - **Modern Web UI** - Next.js frontend with Harvey.ai-inspired design
-- **Production Ready** - Deployed on Render.com with Cloudflare CDN
+- **Production Ready** - Versioned GHCR containers deployed to a Hostinger VPS with Dokploy and Traefik
 
 ---
 
@@ -49,7 +49,7 @@ LawScout AI uses a **microservices architecture** with separate frontend and bac
     │   Frontend        │   │   Backend          │
     │   (Next.js)       │   │   (FastAPI)        │
     │                   │   │                   │
-    │ Render.com        │   │ Render.com        │
+    │ Dokploy / VPS     │   │ Dokploy / VPS     │
     │ Port: 3000        │   │ Port: 8000        │
     └─────────┬─────────┘   └─────────┬─────────┘
               │                       │
@@ -129,15 +129,9 @@ The frontend will be available at `http://localhost:3000` and will connect to th
 
 ### Production Deployment
 
-Deploy to Render.com using Docker:
+GitHub Actions builds separate frontend and backend images and publishes immutable version tags to GHCR. Dokploy pulls those images onto the production VPS.
 
-```bash
-./scripts/deploy.sh
-```
-
-This builds and pushes Docker images to GitHub Container Registry, which Render automatically pulls.
-
-See [DEPLOYMENT_QUICKSTART.md](DEPLOYMENT_QUICKSTART.md) for detailed deployment instructions.
+See [docs/CONTAINER_RELEASE.md](docs/CONTAINER_RELEASE.md) for the canonical release, deployment, verification, and rollback process.
 
 ---
 
@@ -205,9 +199,9 @@ See [docs/CORE_PRINCIPLES.md](docs/CORE_PRINCIPLES.md) for detailed development 
 **Status:** ✅ Fully Operational
 
 - **Primary Domain:** [www.lawscoutai.com](https://www.lawscoutai.com)
-- **Frontend:** Next.js on Render.com (Docker)
-- **Backend:** FastAPI on Render.com (Docker)
-- **CDN:** Cloudflare (edge caching, DDoS protection)
+- **Frontend:** Next.js container deployed by Dokploy on a Hostinger VPS
+- **Backend:** FastAPI container deployed by Dokploy on the same VPS
+- **Routing/TLS:** Traefik with Cloudflare DNS
 - **Vector DB:** Qdrant Cloud
 - **AI Model:** Google Gemini 2.5 Flash
 

@@ -10,8 +10,8 @@ ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
 # Copy package files
 COPY package*.json ./
 
-# Use npm install instead of npm ci
-RUN npm install
+# Reproduce the exact dependency graph recorded in package-lock.json.
+RUN npm ci
 
 # Copy source code
 COPY . .

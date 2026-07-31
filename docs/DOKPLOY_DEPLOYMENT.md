@@ -1,11 +1,35 @@
 # Dokploy Frontend Deployment Guide
 
+> **Production note:** LawScout AI now deploys prebuilt, versioned GHCR images. Dokploy should pull the image rather than build from repository source. See [`CONTAINER_RELEASE.md`](CONTAINER_RELEASE.md) for the canonical frontend and backend release process. The source-build instructions below are retained only for recovery and troubleshooting.
+
 ## Prerequisites
 
 - ✅ Dokploy installed and running on your VPS
 - ✅ GitHub repository connected to Dokploy
 - ✅ Traefik configured for routing
 - ✅ Backend API deployed and accessible at `https://api.lawscoutai.com`
+
+---
+
+## If You Already Have a Frontend Service
+
+Use this quick update path instead of creating a new service:
+
+1. Open your existing frontend service in Dokploy.
+2. Verify:
+   - Dockerfile path: `frontend/Dockerfile`
+   - Docker context: `frontend/`
+3. Set build argument: `NEXT_PUBLIC_API_URL=https://api.lawscoutai.com`.
+4. Set environment variables:
+   - `NEXT_PUBLIC_API_URL=https://api.lawscoutai.com`
+   - `NODE_ENV=production`
+   - `PORT=3000`
+5. Confirm Traefik labels still target:
+   - `lawscoutai.com`
+   - `www.lawscoutai.com`
+6. Click **Redeploy** and validate logs + browser behavior.
+
+If update fails repeatedly, recreate the service using the full steps below.
 
 ---
 
