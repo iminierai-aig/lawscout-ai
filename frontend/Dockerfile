@@ -16,8 +16,10 @@ RUN npm ci
 # Copy source code
 COPY . .
 
-# Build Next.js app (NEXT_PUBLIC_API_URL is baked in at build time)
-RUN npm run build
+# Empty directories are not stored by Git. Ensure public exists so the
+# production-stage COPY is deterministic even when there are no static assets.
+# NEXT_PUBLIC_API_URL is baked in at build time.
+RUN mkdir -p public && npm run build
 
 # Production stage
 FROM node:20-alpine AS runner
