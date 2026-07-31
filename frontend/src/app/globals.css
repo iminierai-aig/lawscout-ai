@@ -2,6 +2,16 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Smooth scroll behavior for anchor links */
+html {
+  scroll-behavior: smooth;
+}
+
+/* Offset for sticky header */
+:target {
+  scroll-margin-top: 100px;
+}
+
 * {
   box-sizing: border-box;
   padding: 0;
@@ -19,4 +29,53 @@ body {
   font-family: 'Playfair Display', 'Georgia', 'Times New Roman', serif;
   font-weight: 400;
   letter-spacing: -0.02em;
+}
+
+/* Smooth animation for expandable sections */
+details summary {
+  transition: all 0.3s ease;
+}
+
+details summary:hover {
+  color: rgb(96, 165, 250); /* blue-400 */
+}
+
+details[open] summary {
+  margin-bottom: 1rem;
+}
+
+/* Remove default marker */
+details summary::-webkit-details-marker,
+details summary::marker {
+  display: none;
+}
+
+/* Add custom arrow indicator */
+details summary::after {
+  content: "▼";
+  display: inline-block;
+  margin-left: 0.5rem;
+  font-size: 0.75rem;
+  transition: transform 0.3s ease;
+  color: rgb(156, 163, 175); /* gray-400 */
+}
+
+details[open] summary::after {
+  transform: rotate(180deg);
+}
+
+/* Smooth content reveal */
+details > *:not(summary) {
+  animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }

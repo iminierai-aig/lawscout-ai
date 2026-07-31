@@ -8,7 +8,6 @@ import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import Sidebar from '@/components/Sidebar'
 import { useAuth } from '@/contexts/AuthContext'
-import { trackSearch } from '@/lib/api'
 import UpgradeBanner from '@/components/UpgradeBanner'
 import AuthStatus from '@/components/AuthStatus'
 
@@ -84,7 +83,7 @@ export default function Home() {
   const [collection, setCollection] = useState('both')
   const [limit, setLimit] = useState(5)
   const [showSources, setShowSources] = useState(true)
-  
+
   // Advanced Filters
   const [useHybrid, setUseHybrid] = useState(true)
   const [useReranking, setUseReranking] = useState(true)
@@ -93,19 +92,19 @@ export default function Home() {
   // Get API URL - Next.js bakes NEXT_PUBLIC_* vars at build time
   // For production, this should be set as build arg in Dockerfile
   const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://api.lawscoutai.com'
-  
+
   // Debug: Log the API URL being used (only in browser console)
   useEffect(() => {
     console.log('🔍 Frontend API URL:', apiUrl)
     console.log('🔍 Environment variable:', process.env.NEXT_PUBLIC_API_URL)
   }, [apiUrl])
-  
+
   // Refresh auth state on mount if token exists but user is missing
   // This fixes the issue where OAuth callback redirects before state propagates
   useEffect(() => {
     const checkAndRefreshAuth = async () => {
       if (typeof window === 'undefined') return
-      
+
       const storedToken = localStorage.getItem('lawscout_auth_token')
       if (storedToken && !user && !loading) {
         // Token exists but user state not loaded, refresh it
@@ -116,12 +115,12 @@ export default function Home() {
         }
       }
     }
-    
+
     // Small delay to let AuthContext initialize first
     const timer = setTimeout(() => {
       checkAndRefreshAuth()
     }, 100)
-    
+
     return () => clearTimeout(timer)
   }, [user, loading, refreshUser])
 
@@ -209,7 +208,7 @@ export default function Home() {
       if (currentToken) {
         try {
           const res = await fetch(`${apiUrl}/api/auth/search/check-limit`, {
-            headers: { 
+            headers: {
               'Authorization': `Bearer ${currentToken}`,
               'Content-Type': 'application/json'
             }
@@ -236,7 +235,7 @@ export default function Home() {
     setAnswer('')
     setResults([])
     const startTime = Date.now()
-    
+
     try {
       // Use optimized axios instance with connection pooling
       // Use currentToken (from state or localStorage) to ensure we have the token
@@ -252,10 +251,10 @@ export default function Home() {
           'Authorization': `Bearer ${currentToken}`
         }
       })
-      
+
       saveToHistory(queryToSearch)
       setAnswer(response.data.answer || 'No answer generated')
-      
+
       const mappedResults = (response.data.sources || []).map((source: any, idx: number) => ({
         case_name: source.metadata?.title || source.metadata?.name || 'Unknown',
         citation: source.metadata?.citation || null,
@@ -271,22 +270,21 @@ export default function Home() {
         bm25_score: source.bm25_score,
         citations: source.citations || []
       }))
-      
+
       setResults(mappedResults)
       setSearchTime(Date.now() - startTime)
-      
+
       if (mappedResults.length > 0) {
         setExpandedSources({ 0: true })
       }
 
-      // Track search if user is authenticated
+      // Usage is enforced and recorded atomically by /api/v1/search.
+      // Refresh the account so the remaining-search count updates in the UI.
       if (currentUser && currentToken) {
         try {
-          await trackSearch(currentToken, queryToSearch, collection, mappedResults.length)
-          await refreshUser() // Refresh user data to update search count
-        } catch (err) {
-          console.error('Failed to track search:', err)
-          // Don't show error to user - search was successful
+          await refreshUser()
+        } catch (refreshError) {
+          console.error('Failed to refresh search usage:', refreshError)
         }
       }
     } catch (err: any) {
@@ -299,7 +297,7 @@ export default function Home() {
         code: err.code,
         config: err.config
       })
-      
+
       // More detailed error message
       let errorMsg = 'Search failed. Please try again.'
       if (err.response?.data?.detail) {
@@ -309,7 +307,7 @@ export default function Home() {
       } else if (err.code === 'ERR_NETWORK' || err.code === 'ECONNREFUSED') {
         errorMsg = `Cannot connect to backend at ${apiUrl}. Please check the API URL configuration.`
       }
-      
+
       setError(errorMsg)
     } finally {
       setLoading(false)
@@ -347,7 +345,7 @@ export default function Home() {
       setError('Please sign in or create an account to search. Sign up is free!')
       return
     }
-    
+
     setQuery(exampleQuery)
     // Auto-trigger search with the example query
     const syntheticEvent = {
@@ -470,7 +468,7 @@ Content: ${source.full_text || source.snippet}
         <main className="flex-1 max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-16 w-full">
         {/* Upgrade Banner */}
         <UpgradeBanner />
-        
+
         {/* Hero Section */}
         <div className="text-center mb-16">
           <h1 className="text-6xl md:text-7xl font-serif-heading text-white mb-6 leading-tight">
@@ -480,6 +478,30 @@ Content: ${source.full_text || source.snippet}
             Master legal concepts and procedures, draft precise documents, and conduct thorough analysis — all for free to start.
           </p>
         </div>
+
+        {/* Stats Banner */}
+        <section className="bg-gradient-to-r from-blue-900/20 to-purple-900/20 py-8 border-y border-gray-800 mb-12">
+          <div className="max-w-6xl mx-auto px-4">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
+              <div>
+                <div className="text-4xl font-bold text-blue-400 mb-1">276,970+</div>
+                <div className="text-sm text-gray-400">Legal Documents</div>
+              </div>
+              <div>
+                <div className="text-4xl font-bold text-blue-400 mb-1">15</div>
+                <div className="text-sm text-gray-400">Free Searches</div>
+              </div>
+              <div>
+                <div className="text-4xl font-bold text-blue-400 mb-1">&lt;2s</div>
+                <div className="text-sm text-gray-400">Response Time</div>
+              </div>
+              <div>
+                <div className="text-4xl font-bold text-blue-400 mb-1">$29/mo</div>
+                <div className="text-sm text-gray-400">Pro (vs $100+ competitors)</div>
+              </div>
+            </div>
+          </div>
+        </section>
 
         {/* Search Form - Harvey.ai style */}
         <div className="mb-12">
@@ -513,39 +535,54 @@ Content: ${source.full_text || source.snippet}
             </div>
           </form>
 
-          {/* Example Queries - Harvey.ai style */}
-          {user ? (
-            <div className="mt-8">
-              <p className="text-sm text-gray-500 mb-4 text-center">Example queries:</p>
-              <div className="flex flex-wrap gap-3 justify-center">
-                {exampleQueries.slice(0, 5).map((example, idx) => (
-                  <button
-                    key={idx}
-                    onClick={() => handleExampleClick(example)}
-                    className="px-4 py-2 text-sm text-gray-400 hover:text-white transition-colors border border-gray-800 hover:border-gray-700 rounded-md"
-                  >
-                    {example}
-                  </button>
-                ))}
-              </div>
-            </div>
-          ) : (
-            <div className="mt-8 p-6 bg-harvey-dark border border-gray-800 rounded-md text-center">
-              <p className="text-white text-lg mb-2">🔒 Sign in required to search</p>
-              <p className="text-gray-400 text-sm mb-4">Create a free account to access our legal research database</p>
-              <div className="flex gap-4 justify-center">
+          {/* Example Queries - Only show expandable section, not redundant buttons */}
+          {!user && (
+            <div className="mt-8 p-8 bg-harvey-dark border border-gray-800 rounded-md text-center">
+              <div className="text-5xl mb-4">🔒</div>
+              <h3 className="text-2xl font-bold mb-2 text-white">Sign in required to search</h3>
+              <p className="text-gray-400 mb-6">
+                Create a free account to access our legal research database
+              </p>
+
+              {/* CTA Buttons */}
+              <div className="flex flex-col sm:flex-row gap-4 justify-center mb-6">
                 <button
                   onClick={() => router.push('/register')}
-                  className="px-6 py-2 bg-white text-harvey-dark font-medium rounded-md hover:bg-gray-100 transition-colors cursor-pointer"
+                  className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-3 rounded-lg font-bold transition cursor-pointer"
                 >
-                  Sign Up Free
+                  Sign Up Free - 15 Searches
                 </button>
                 <button
                   onClick={() => router.push('/login')}
-                  className="px-6 py-2 border border-gray-700 text-white font-medium rounded-md hover:border-gray-600 transition-colors cursor-pointer"
+                  className="bg-gray-700 hover:bg-gray-600 text-white px-8 py-3 rounded-lg font-bold transition cursor-pointer"
                 >
                   Sign In
                 </button>
+              </div>
+
+              {/* Quick Links */}
+              <div className="flex flex-wrap items-center justify-center gap-4 text-sm mb-6">
+                <a href="#examples" className="text-blue-400 hover:underline flex items-center gap-1 cursor-pointer">
+                  👀 See example searches
+                </a>
+                <span className="text-gray-600">•</span>
+                <a href="#how-it-works" className="text-blue-400 hover:underline flex items-center gap-1 cursor-pointer">
+                  🔍 How it works
+                </a>
+                <span className="text-gray-600">•</span>
+                <Link href="/support" className="text-blue-400 hover:underline flex items-center gap-1">
+                  ❓ Full FAQ
+                </Link>
+              </div>
+
+              {/* Quick Stats */}
+              <div className="pt-6 border-t border-gray-700">
+                <div className="flex flex-wrap items-center justify-center gap-6 text-sm text-gray-400">
+                  <span>✓ 276,970+ legal documents</span>
+                  <span>✓ AI-powered search</span>
+                  <span>✓ Instant citations</span>
+                  <span>✓ $29/mo Pro tier</span>
+                </div>
               </div>
             </div>
           )}
@@ -557,6 +594,277 @@ Content: ${source.full_text || source.snippet}
             </div>
           )}
         </div>
+
+        {/* Expandable Content Sections - Show for non-authenticated users */}
+        {!user && (
+          <div className="max-w-6xl mx-auto space-y-6 mb-12">
+
+            {/* Example Queries - OPEN BY DEFAULT */}
+            <details id="examples" className="bg-harvey-dark rounded-lg border border-gray-800 p-6 group" open>
+              <summary className="text-xl font-bold cursor-pointer flex items-center gap-2 list-none">
+                <span className="text-2xl">💡</span>
+                <span>See What You Can Search For</span>
+                <span className="text-sm text-gray-400 ml-auto group-open:hidden">(click to expand)</span>
+                <span className="text-sm text-gray-400 ml-auto hidden group-open:inline">(click to collapse)</span>
+              </summary>
+
+              <div className="mt-6">
+                <p className="text-gray-400 mb-6 text-center">
+                  Real examples of legal research queries you can run
+                </p>
+
+                <div className="grid md:grid-cols-2 gap-4">
+                  <div className="bg-gray-800 p-4 rounded-lg border border-gray-700 hover:border-blue-500 hover:shadow-lg hover:shadow-blue-500/20 transition-all cursor-pointer transform hover:-translate-y-1">
+                    <p className="text-blue-400 text-sm mb-2 font-mono">Case Law</p>
+                    <p className="font-semibold text-white">"What is qualified immunity?"</p>
+                  </div>
+
+                  <div className="bg-gray-800 p-4 rounded-lg border border-gray-700 hover:border-blue-500 hover:shadow-lg hover:shadow-blue-500/20 transition-all cursor-pointer transform hover:-translate-y-1">
+                    <p className="text-blue-400 text-sm mb-2 font-mono">Constitutional Law</p>
+                    <p className="font-semibold text-white">"Fourth Amendment search and seizure exceptions"</p>
+                  </div>
+
+                  <div className="bg-gray-800 p-4 rounded-lg border border-gray-700 hover:border-blue-500 hover:shadow-lg hover:shadow-blue-500/20 transition-all cursor-pointer transform hover:-translate-y-1">
+                    <p className="text-blue-400 text-sm mb-2 font-mono">Contract Law</p>
+                    <p className="font-semibold text-white">"What makes a contract legally binding?"</p>
+                  </div>
+
+                  <div className="bg-gray-800 p-4 rounded-lg border border-gray-700 hover:border-blue-500 hover:shadow-lg hover:shadow-blue-500/20 transition-all cursor-pointer transform hover:-translate-y-1">
+                    <p className="text-blue-400 text-sm mb-2 font-mono">Civil Procedure</p>
+                    <p className="font-semibold text-white">"Summary judgment standard in federal court"</p>
+                  </div>
+
+                  <div className="bg-gray-800 p-4 rounded-lg border border-gray-700 hover:border-blue-500 hover:shadow-lg hover:shadow-blue-500/20 transition-all cursor-pointer transform hover:-translate-y-1">
+                    <p className="text-blue-400 text-sm mb-2 font-mono">Criminal Law</p>
+                    <p className="font-semibold text-white">"Miranda rights exceptions and waivers"</p>
+                  </div>
+
+                  <div className="bg-gray-800 p-4 rounded-lg border border-gray-700 hover:border-blue-500 hover:shadow-lg hover:shadow-blue-500/20 transition-all cursor-pointer transform hover:-translate-y-1">
+                    <p className="text-blue-400 text-sm mb-2 font-mono">Employment Law</p>
+                    <p className="font-semibold text-white">"At-will employment termination rules"</p>
+                  </div>
+                </div>
+
+                <div className="mt-6 text-center">
+                  <Link href="/support" className="text-blue-400 hover:underline text-sm">
+                    View more examples and full FAQ →
+                  </Link>
+                </div>
+              </div>
+            </details>
+
+            {/* How It Works */}
+            <details id="how-it-works" className="bg-harvey-dark rounded-lg border border-gray-800 p-6 group">
+              <summary className="text-xl font-bold cursor-pointer flex items-center gap-2 list-none">
+                <span className="text-2xl">🔍</span>
+                <span>How It Works</span>
+                <span className="text-sm text-gray-400 ml-auto group-open:hidden">(click to expand)</span>
+                <span className="text-sm text-gray-400 ml-auto hidden group-open:inline">(click to collapse)</span>
+              </summary>
+
+              <div className="grid md:grid-cols-3 gap-8 mt-6">
+                <div className="text-center">
+                  <div className="w-16 h-16 bg-blue-600 rounded-full flex items-center justify-center mx-auto mb-4 text-3xl">
+                    🔍
+                  </div>
+                  <h3 className="text-lg font-bold mb-2 text-white">1. Ask Your Question</h3>
+                  <p className="text-sm text-gray-400">
+                    Search our database of 276,970+ legal documents including case law, contracts, and legal opinions
+                  </p>
+                </div>
+
+                <div className="text-center">
+                  <div className="w-16 h-16 bg-blue-600 rounded-full flex items-center justify-center mx-auto mb-4 text-3xl">
+                    🤖
+                  </div>
+                  <h3 className="text-lg font-bold mb-2 text-white">2. AI Analyzes</h3>
+                  <p className="text-sm text-gray-400">
+                    Our AI searches relevant cases, extracts key points, and synthesizes accurate answers with citations
+                  </p>
+                </div>
+
+                <div className="text-center">
+                  <div className="w-16 h-16 bg-blue-600 rounded-full flex items-center justify-center mx-auto mb-4 text-3xl">
+                    ⚡
+                  </div>
+                  <h3 className="text-lg font-bold mb-2 text-white">3. Get Instant Results</h3>
+                  <p className="text-sm text-gray-400">
+                    Receive comprehensive answers in seconds with case citations and relevant legal precedents
+                  </p>
+                </div>
+              </div>
+            </details>
+
+            {/* Comparison Table */}
+            <details className="bg-harvey-dark rounded-lg border border-gray-800 p-6 group">
+              <summary className="text-xl font-bold cursor-pointer flex items-center gap-2 list-none">
+                <span className="text-2xl">⚖️</span>
+                <span>Why Choose LawScout AI?</span>
+                <span className="text-sm text-gray-400 ml-auto group-open:hidden">(click to expand)</span>
+                <span className="text-sm text-gray-400 ml-auto hidden group-open:inline">(click to collapse)</span>
+              </summary>
+
+              <div className="mt-6">
+                <p className="text-center text-gray-400 mb-6">
+                  Professional legal research without the enterprise price tag
+                </p>
+
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-sm">
+                    <thead>
+                      <tr className="border-b border-gray-700">
+                        <th className="py-4 px-4 text-white">Feature</th>
+                        <th className="py-4 px-3 text-center text-gray-400">Westlaw</th>
+                        <th className="py-4 px-3 text-center text-gray-400">LexisNexis</th>
+                        <th className="py-4 px-3 text-center text-gray-400">ChatGPT Plus</th>
+                        <th className="py-4 px-3 text-center bg-blue-900/30 rounded-t-lg">
+                          <span className="text-blue-400 font-bold">LawScout AI</span>
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr className="border-b border-gray-800">
+                        <td className="py-4 px-4 font-semibold text-white">Monthly Cost</td>
+                        <td className="py-4 px-3 text-center text-gray-400">$100-500</td>
+                        <td className="py-4 px-3 text-center text-gray-400">$100-400</td>
+                        <td className="py-4 px-3 text-center text-gray-400">$20</td>
+                        <td className="py-4 px-3 text-center bg-blue-900/30">
+                          <span className="text-blue-400 font-bold">$0-29</span>
+                        </td>
+                      </tr>
+                      <tr className="border-b border-gray-800">
+                        <td className="py-4 px-4 font-semibold text-white">Legal Database</td>
+                        <td className="py-4 px-3 text-center text-white">✅ Millions</td>
+                        <td className="py-4 px-3 text-center text-white">✅ Millions</td>
+                        <td className="py-4 px-3 text-center text-gray-400">❌ General</td>
+                        <td className="py-4 px-3 text-center bg-blue-900/30">
+                          <span className="text-blue-400 font-bold">✅ 276k+</span>
+                        </td>
+                      </tr>
+                      <tr className="border-b border-gray-800">
+                        <td className="py-4 px-4 font-semibold text-white">AI Analysis</td>
+                        <td className="py-4 px-3 text-center text-gray-400">⚠️ Limited</td>
+                        <td className="py-4 px-3 text-center text-gray-400">⚠️ Limited</td>
+                        <td className="py-4 px-3 text-center text-white">✅ Yes</td>
+                        <td className="py-4 px-3 text-center bg-blue-900/30">
+                          <span className="text-blue-400 font-bold">✅ Advanced</span>
+                        </td>
+                      </tr>
+                      <tr className="border-b border-gray-800">
+                        <td className="py-4 px-4 font-semibold text-white">Free Tier</td>
+                        <td className="py-4 px-3 text-center text-gray-400">❌ No</td>
+                        <td className="py-4 px-3 text-center text-gray-400">❌ No</td>
+                        <td className="py-4 px-3 text-center text-gray-400">⚠️ Limited</td>
+                        <td className="py-4 px-3 text-center bg-blue-900/30">
+                          <span className="text-blue-400 font-bold">✅ 15 searches</span>
+                        </td>
+                      </tr>
+                      <tr>
+                        <td className="py-4 px-4 font-semibold text-white">Best For</td>
+                        <td className="py-4 px-3 text-center text-xs text-gray-400">Large firms</td>
+                        <td className="py-4 px-3 text-center text-xs text-gray-400">Enterprises</td>
+                        <td className="py-4 px-3 text-center text-xs text-gray-400">General AI</td>
+                        <td className="py-4 px-3 text-center bg-blue-900/30 text-xs rounded-b-lg">
+                          <span className="text-blue-400 font-bold">Students, Solos, Paralegals</span>
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+
+                <p className="mt-6 text-center text-sm text-gray-400">
+                  💰 Save 70-85% compared to traditional legal research tools
+                </p>
+              </div>
+            </details>
+
+            {/* Quick FAQ */}
+            <details className="bg-harvey-dark rounded-lg border border-gray-800 p-6 group">
+              <summary className="text-xl font-bold cursor-pointer flex items-center gap-2 list-none">
+                <span className="text-2xl">❓</span>
+                <span>Common Questions</span>
+                <span className="text-sm text-gray-400 ml-auto group-open:hidden">(click to expand)</span>
+                <span className="text-sm text-gray-400 ml-auto hidden group-open:inline">(click to collapse)</span>
+              </summary>
+
+              <div className="space-y-6 mt-6">
+                <div>
+                  <p className="font-bold mb-2 text-blue-400">Is this legal advice?</p>
+                  <p className="text-sm text-gray-400">
+                    No. LawScout AI is a research tool, not a substitute for professional legal counsel. Always consult qualified attorneys for legal matters affecting you.
+                  </p>
+                </div>
+
+                <div>
+                  <p className="font-bold mb-2 text-blue-400">What happens after 15 free searches?</p>
+                  <p className="text-sm text-gray-400">
+                    You'll be prompted to upgrade to Pro ($29/month) for unlimited searches. Your account remains active, but you won't be able to perform new searches until you upgrade.
+                  </p>
+                </div>
+
+                <div>
+                  <p className="font-bold mb-2 text-blue-400">How accurate are the search results?</p>
+                  <p className="text-sm text-gray-400">
+                    Our AI searches through 276,970+ verified legal documents using advanced vector search. While we strive for accuracy, always verify information with primary sources and consult qualified attorneys.
+                  </p>
+                </div>
+
+                <div>
+                  <p className="font-bold mb-2 text-blue-400">Can I use this for commercial purposes?</p>
+                  <p className="text-sm text-gray-400">
+                    Yes, both Free and Pro tiers can be used for commercial legal research. However, you must comply with our Terms of Service.
+                  </p>
+                </div>
+
+                <div>
+                  <p className="font-bold mb-2 text-blue-400">What's included in the Pro tier?</p>
+                  <p className="text-sm text-gray-400">
+                    Pro tier (coming soon) includes unlimited searches, priority support, advanced AI features, and export capabilities for just $29/month.
+                  </p>
+                </div>
+              </div>
+
+              <div className="mt-6 pt-6 border-t border-gray-700 text-center">
+                <Link href="/support" className="text-blue-400 hover:underline text-sm">
+                  See all 10 FAQs and contact support →
+                </Link>
+              </div>
+            </details>
+          </div>
+        )}
+
+        {/* Expandable Sections for Authenticated Users (when no results) */}
+        {user && !loading && results.length === 0 && !answer && !error && (
+          <div className="max-w-6xl mx-auto space-y-6 mb-12">
+            <details id="examples" className="bg-harvey-dark rounded-lg border border-gray-800 p-6 group" open>
+              <summary className="text-xl font-bold cursor-pointer flex items-center gap-2 list-none">
+                <span className="text-2xl">💡</span>
+                <span>Example Queries</span>
+                <span className="text-sm text-gray-400 ml-auto group-open:hidden">(click to expand)</span>
+                <span className="text-sm text-gray-400 ml-auto hidden group-open:inline">(click to collapse)</span>
+              </summary>
+
+              <div className="mt-6">
+                <p className="text-gray-400 mb-6 text-center">
+                  Click any example to search immediately
+                </p>
+
+                <div className="grid md:grid-cols-2 gap-4">
+                  {exampleQueries.slice(0, 6).map((example, idx) => (
+                    <button
+                      key={idx}
+                      onClick={() => handleExampleClick(example)}
+                      className="bg-gray-800 p-4 rounded-lg border border-gray-700 hover:border-blue-500 hover:shadow-lg hover:shadow-blue-500/20 transition-all cursor-pointer transform hover:-translate-y-1 text-left"
+                    >
+                      <p className="text-blue-400 text-sm mb-2 font-mono">Example Query</p>
+                      <p className="font-semibold text-white">{example}</p>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </details>
+          </div>
+        )}
 
         {/* Answer Section */}
         {answer && (
@@ -579,8 +887,8 @@ Content: ${source.full_text || source.snippet}
                 components={{
                   // Style links to match the site theme
                   a: ({node, ...props}) => (
-                    <a 
-                      {...props} 
+                    <a
+                      {...props}
                       className="text-blue-400 hover:text-blue-300 underline transition-colors"
                       target="_blank"
                       rel="noopener noreferrer"
@@ -806,6 +1114,43 @@ Content: ${source.full_text || source.snippet}
             This is a research demonstration only – not legal advice. Always verify with primary sources and consult qualified attorneys.
           </p>
         </div>
+
+        {/* Final CTA - Only for non-authenticated users */}
+        {!user && (
+          <section className="max-w-4xl mx-auto px-4 py-16">
+            <div className="bg-gradient-to-br from-blue-600 to-purple-600 p-10 rounded-2xl text-center">
+              <h2 className="text-3xl font-bold mb-3 text-white">
+                Ready to Start Your Legal Research?
+              </h2>
+              <p className="text-xl mb-6 text-blue-100">
+                Join hundreds of students, paralegals, and practitioners
+              </p>
+
+              <div className="flex flex-col sm:flex-row gap-4 justify-center mb-6">
+                <button
+                  onClick={() => router.push('/register')}
+                  className="bg-white text-blue-600 px-10 py-4 rounded-lg font-bold text-lg hover:bg-gray-100 transition shadow-lg cursor-pointer"
+                >
+                  Sign Up Free - Get 15 Searches
+                </button>
+                <button
+                  onClick={() => router.push('/login')}
+                  className="bg-transparent border-2 border-white text-white px-10 py-4 rounded-lg font-bold text-lg hover:bg-white/10 transition cursor-pointer"
+                >
+                  Sign In
+                </button>
+              </div>
+
+              <div className="flex flex-wrap items-center justify-center gap-4 text-sm text-blue-100">
+                <span>✓ No credit card required</span>
+                <span>•</span>
+                <span>✓ 30 seconds to sign up</span>
+                <span>•</span>
+                <span>✓ Start searching immediately</span>
+              </div>
+            </div>
+          </section>
+        )}
       </main>
 
         {/* Footer */}

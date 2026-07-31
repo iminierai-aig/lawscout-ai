@@ -67,6 +67,9 @@ verify_embeddings.py
 # SCRIPTS
 scripts/
 tests/
+# Backend regression tests are part of the production FastAPI service.
+!backend/tests/
+!backend/tests/**
 preprocessing/
 pytest.ini
 requirements-dev.txt
@@ -106,4 +109,9 @@ TECHNICAL_DESIGN.md
 
 # Beads issue tracking (not used)
 .beads/
+
+# Frontend build and dependency artifacts
+frontend/.next/
+frontend/node_modules/
+node_modules/
 

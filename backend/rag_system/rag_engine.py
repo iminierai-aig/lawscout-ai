@@ -394,13 +394,18 @@ Note: LLM answer generation is temporarily unavailable. Check your Gemini API ke
         if return_sources:
             response['sources'] = []
             for r in results[:5]:
+                # Preserve retrieval metadata through the RAG/API boundary so
+                # the frontend receives authoritative court, date, citation,
+                # and source URL fields instead of having to infer everything.
+                result_metadata = r.get('metadata', {})
                 source_dict = {
                     'score': r['score'],
                     'text': r['text'][:200] + '...',
                     'full_text': r['text'],  # Include full text
-                    'source': r.get('metadata', {}).get('case_name') or \
-                              r.get('metadata', {}).get('filename', 'Unknown'),
-                    'collection': r['collection']
+                    'source': result_metadata.get('case_name') or
+                              result_metadata.get('filename', 'Unknown'),
+                    'collection': r['collection'],
+                    'metadata': result_metadata,
                 }
                 
                 # Add search method scores if available

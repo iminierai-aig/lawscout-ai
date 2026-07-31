@@ -108,10 +108,59 @@ async def require_admin(
 def check_search_limit(user: User) -> tuple[bool, int, str]:
     if user.tier == "pro":
         return True, -1, "Unlimited searches (Pro tier)"
-    
-    searches_remaining = FREE_TIER_LIMIT - user.search_count
-    
+
+    searches_remaining = max(FREE_TIER_LIMIT - user.search_count, 0)
+
     if searches_remaining <= 0:
         return False, 0, "Free search limit reached. Upgrade to Pro for unlimited searches!"
-    
+
     return True, searches_remaining, f"{searches_remaining} free searches remaining"
+
+
+def reserve_search(db: Session, user: User) -> tuple[bool, int]:
+    """Atomically reserve one search before running the costly RAG pipeline.
+
+    The conditional UPDATE prevents concurrent requests from both passing the
+    free-tier limit. Pro users are not incremented.
+    """
+    if user.tier == "pro":
+        return True, -1
+
+    updated = (
+        db.query(User)
+        .filter(
+            User.id == user.id,
+            User.tier == "free",
+            User.search_count < FREE_TIER_LIMIT,
+        )
+        .update(
+            {User.search_count: User.search_count + 1},
+            synchronize_session=False,
+        )
+    )
+
+    if updated != 1:
+        db.rollback()
+        db.refresh(user)
+        return False, 0
+
+    db.commit()
+    db.refresh(user)
+    return True, max(FREE_TIER_LIMIT - user.search_count, 0)
+
+
+def refund_search(db: Session, user: User) -> None:
+    """Return a reserved free-tier search when the search pipeline fails."""
+    if user.tier == "pro":
+        return
+
+    (
+        db.query(User)
+        .filter(User.id == user.id, User.search_count > 0)
+        .update(
+            {User.search_count: User.search_count - 1},
+            synchronize_session=False,
+        )
+    )
+    db.commit()
+    db.refresh(user)

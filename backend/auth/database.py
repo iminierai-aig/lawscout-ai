@@ -3,17 +3,28 @@ from sqlalchemy import create_engine
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 from pathlib import Path
+import os
 
-# SQLite database path (will be mounted as volume in Docker)
-DB_PATH = Path("/app/data/users.db")
-DB_PATH.parent.mkdir(parents=True, exist_ok=True)
+# Default to the Docker volume while allowing local development, tests, and a
+# future PostgreSQL migration to supply a standard DATABASE_URL.
+DEFAULT_DB_PATH = Path("/app/data/users.db")
+SQLALCHEMY_DATABASE_URL = os.getenv(
+    "DATABASE_URL",
+    f"sqlite:///{DEFAULT_DB_PATH}",
+)
 
-SQLALCHEMY_DATABASE_URL = f"sqlite:///{DB_PATH}"
+if SQLALCHEMY_DATABASE_URL.startswith("sqlite:///"):
+    sqlite_path = Path(SQLALCHEMY_DATABASE_URL.removeprefix("sqlite:///"))
+    if str(sqlite_path) != ":memory:":
+        sqlite_path.parent.mkdir(parents=True, exist_ok=True)
+    connect_args = {"check_same_thread": False, "timeout": 30}
+else:
+    connect_args = {}
 
 engine = create_engine(
     SQLALCHEMY_DATABASE_URL,
-    connect_args={"check_same_thread": False, "timeout": 30},
-    pool_pre_ping=True
+    connect_args=connect_args,
+    pool_pre_ping=True,
 )
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)

@@ -53,10 +53,35 @@ export default function RootLayout({
         <AuthProvider>
           {/* Beta Banner */}
           <div className="bg-blue-600 text-white text-center py-2 text-sm relative z-10">
-            🚀 Beta Testing Phase - Your feedback shapes our product! 
+            🚀 Beta Testing Phase - Your feedback shapes our product!
             <Link href="/support" className="underline ml-2 hover:text-blue-100">Report Issues</Link>
           </div>
-          
+
+          {/* Sticky Info Banner */}
+          <div className="bg-gradient-to-r from-blue-600/20 to-purple-600/20 border-b border-blue-500/30 py-2.5 sticky top-0 z-40 backdrop-blur-sm">
+            <div className="max-w-7xl mx-auto px-4">
+              <div className="flex flex-wrap items-center justify-between gap-3 text-sm">
+                <div className="flex flex-wrap items-center gap-4 md:gap-6">
+                  <span className="text-gray-300">
+                    <span className="font-bold text-blue-400">276,970+</span> legal docs
+                  </span>
+                  <span className="text-gray-300">
+                    <span className="font-bold text-blue-400">15</span> free searches
+                  </span>
+                  <span className="text-gray-300">
+                    <span className="font-bold text-blue-400">$29/mo</span> Pro
+                  </span>
+                </div>
+                <Link
+                  href="/support"
+                  className="text-blue-300 hover:text-white font-bold whitespace-nowrap transition border border-blue-400/30 px-3 py-1 rounded-lg hover:border-blue-400 hover:bg-blue-500/20"
+                >
+                  Examples & FAQ →
+                </Link>
+              </div>
+            </div>
+          </div>
+
           {children}
         </AuthProvider>
       </body>

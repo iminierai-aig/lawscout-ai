@@ -137,37 +137,26 @@ async def check_search_limit(
         message=message
     )
 
-@router.post("/search/track")
+@router.post("/search/track", deprecated=True)
 async def track_search(
     search_data: schemas.SearchTrack,
     current_user: models.User = Depends(security.get_current_active_user),
-    db: Session = Depends(get_db)
 ):
-    can_search, searches_remaining, message = security.check_search_limit(current_user)
-    
-    if not can_search:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail=message
-        )
-    
-    search_record = models.SearchHistory(
-        user_id=current_user.id,
-        query=search_data.query,
-        collection=search_data.collection,
-        result_count=search_data.result_count
+    """Compatibility endpoint for older frontends.
+
+    Search usage and history are now recorded atomically by /api/v1/search.
+    Keeping this as a no-op prevents an older deployed frontend from counting a
+    successful search twice while backend and frontend releases roll out.
+    """
+    searches_remaining = (
+        max(security.FREE_TIER_LIMIT - current_user.search_count, 0)
+        if current_user.tier == "free"
+        else -1
     )
-    db.add(search_record)
-    
-    current_user.search_count += 1
-    db.commit()
-    
-    new_searches_remaining = security.FREE_TIER_LIMIT - current_user.search_count if current_user.tier == "free" else -1
-    
     return {
-        "message": "Search tracked successfully",
+        "message": "Search is tracked by the search endpoint",
         "search_count": current_user.search_count,
-        "searches_remaining": new_searches_remaining
+        "searches_remaining": searches_remaining,
     }
 
 @router.post("/admin/upgrade-user")
