@@ -4,10 +4,12 @@ All notable production changes to LawScout AI are recorded here. Production rele
 
 ## Unreleased
 
+## v2.1.6 - 2026-07-31
+
 ### Changed
 
 - Migrated frontend linting from deprecated `next lint` to the ESLint CLI.
-- Added frontend linting to CI.
+- Resolved the existing frontend lint findings and added warning-free linting to CI.
 - Upgraded GitHub and Docker Actions to Node 24-compatible major versions.
 
 ## v2.1.5 - 2026-07-31
