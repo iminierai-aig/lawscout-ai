@@ -203,7 +203,7 @@ export default function Home() {
         setError(limit.message)
         return
       }
-    } catch (err: any) {
+    } catch {
       // If checkLimit fails, try direct API call with currentToken
       if (currentToken) {
         try {
@@ -255,7 +255,7 @@ export default function Home() {
       saveToHistory(queryToSearch)
       setAnswer(response.data.answer || 'No answer generated')
 
-      const mappedResults = (response.data.sources || []).map((source: any, idx: number) => ({
+      const mappedResults = (response.data.sources || []).map((source: any) => ({
         case_name: source.metadata?.title || source.metadata?.name || 'Unknown',
         citation: source.metadata?.citation || null,
         relevance_score: source.score || 0,
@@ -886,7 +886,7 @@ Content: ${source.full_text || source.snippet}
                 className="text-gray-300 leading-relaxed font-light"
                 components={{
                   // Style links to match the site theme
-                  a: ({node, ...props}) => (
+                  a: ({node: _node, ...props}) => (
                     <a
                       {...props}
                       className="text-blue-400 hover:text-blue-300 underline transition-colors"
@@ -895,18 +895,18 @@ Content: ${source.full_text || source.snippet}
                     />
                   ),
                   // Style lists
-                  ul: ({node, ...props}) => (
+                  ul: ({node: _node, ...props}) => (
                     <ul {...props} className="list-disc list-inside space-y-2 my-4" />
                   ),
-                  ol: ({node, ...props}) => (
+                  ol: ({node: _node, ...props}) => (
                     <ol {...props} className="list-decimal list-inside space-y-2 my-4" />
                   ),
                   // Style paragraphs
-                  p: ({node, ...props}) => (
+                  p: ({node: _node, ...props}) => (
                     <p {...props} className="mb-4" />
                   ),
                   // Style strong/bold
-                  strong: ({node, ...props}) => (
+                  strong: ({node: _node, ...props}) => (
                     <strong {...props} className="font-semibold text-white" />
                   ),
                 }}

@@ -3,12 +3,10 @@
 import { useAuth } from '@/contexts/AuthContext'
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { getUser } from '@/lib/api'
-import { getToken } from '@/lib/auth'
 
 export default function ProfilePage() {
   const { user, token, refreshUser, loading } = useAuth()
-  const [searchHistory, setSearchHistory] = useState<any[]>([])
+  const [searchHistory] = useState<any[]>([])
   const [loadingHistory, setLoadingHistory] = useState(true)
 
   useEffect(() => {

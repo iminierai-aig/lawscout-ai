@@ -55,7 +55,7 @@ export default function SupportPage() {
         })
       }, 3000)
 
-    } catch (err) {
+    } catch {
       setError('Failed to submit. Please email support@lawscoutai.com directly.')
     } finally {
       setIsSubmitting(false)

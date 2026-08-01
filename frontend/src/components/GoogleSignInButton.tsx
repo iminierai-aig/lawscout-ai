@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 
 interface GoogleSignInButtonProps {
   className?: string
@@ -12,11 +12,6 @@ export default function GoogleSignInButton({
   text = 'Sign in with Google' 
 }: GoogleSignInButtonProps) {
   const [loading, setLoading] = useState(false)
-  const [mounted, setMounted] = useState(false)
-
-  useEffect(() => {
-    setMounted(true)
-  }, [])
 
   const handleGoogleSignIn = () => {
     if (typeof window === 'undefined') return

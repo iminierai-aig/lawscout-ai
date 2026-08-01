@@ -38,7 +38,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           const freshUser = await getUser(storedToken)
           setUserState(freshUser)
           setUser(freshUser)
-        } catch (error) {
+        } catch {
           // Token invalid: clear both browser storage and the middleware cookie.
           removeToken()
           document.cookie = 'lawscout_auth_token=; path=/; max-age=0; SameSite=Lax'
@@ -92,7 +92,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const freshUser = await getUser(currentToken)
       setUserState(freshUser)
       setUser(freshUser)
-    } catch (error) {
+    } catch {
       logoutUser()
     }
   }

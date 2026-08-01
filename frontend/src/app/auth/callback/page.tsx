@@ -62,7 +62,7 @@ function AuthCallbackContent() {
           } else {
             throw new Error('Failed to fetch user data')
           }
-        } catch (err) {
+        } catch {
           setStatus('error')
           setMessage('Failed to complete authentication. Please try again.')
           setTimeout(() => router.push('/login'), 3000)
