@@ -12,6 +12,11 @@ All notable production changes to LawScout AI are recorded here. Production rele
 - Resolved the existing frontend lint findings and added warning-free linting to CI.
 - Upgraded GitHub and Docker Actions to Node 24-compatible major versions.
 
+### Deployment
+
+- Published and deployed backend and frontend images as `v2.1.6`.
+- Reverified backend health, authentication health, frontend availability, stale-cookie routing, and unauthenticated search rejection in production.
+
 ## v2.1.5 - 2026-07-31
 
 ### Security
