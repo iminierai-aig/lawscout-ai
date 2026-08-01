@@ -6,11 +6,12 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start -p 3000",
-    "lint": "next lint"
+    "lint": "next lint",
+    "test:auth-routing": "bash test-auth-routing.sh"
   },
   "dependencies": {
-    "axios": "^1.7.2",
-    "next": "^14.2.35",
+    "axios": "^1.19.0",
+    "next": "^15.5.22",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "react-markdown": "^9.0.1",
@@ -21,8 +22,14 @@
     "@types/react": "^18",
     "@types/react-dom": "^18",
     "autoprefixer": "^10.4.20",
-    "postcss": "^8.4.47",
+    "postcss": "^8.5.25",
     "tailwindcss": "^3.4.1",
     "typescript": "^5"
+  },
+  "overrides": {
+    "next": {
+      "sharp": "0.35.0"
+    },
+    "postcss": "$postcss"
   }
 }
